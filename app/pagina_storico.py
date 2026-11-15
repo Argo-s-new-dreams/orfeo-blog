@@ -5,19 +5,20 @@ from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView, QLab
 
 import comune
 import motore
-from pagina_bozza import apri
+from ui_comune import apri
 from pagine import Pagina
 
-ESITI = {"ok": "✅ bozza", "errore": "❌ errore", "nessun-tema": "— nessun tema", "interrotta": "⏹ fermata",
+ESITI = {"ok": "✅ fatto", "errore": "❌ errore", "nessuna-bozza": "— nessuna bozza", "interrotta": "⏹ fermata",
          "saltata": "↷ saltata"}
+TIPI = {"kb": "Knowledge Base", "articolo": "Articolo"}
 
 
 class PaginaStorico(Pagina):
     titolo = "Storico"
 
     def costruisci(self, lay):
-        self.sottotitolo("Tutte le esecuzioni, manuali e pianificate. Doppio clic: apre la bozza in WordPress "
-                         "o, se è rimasta sul computer, il file.")
+        self.sottotitolo("Articoli sviluppati e controlli della Knowledge Base, manuali e pianificati. Doppio clic: "
+                         "apre la bozza in WordPress o, se è rimasta sul computer, il file.")
         r = QHBoxLayout()
         b_apri = QPushButton("Apri la bozza selezionata")
         b_apri.setProperty("primario", True)
@@ -32,9 +33,9 @@ class PaginaStorico(Pagina):
             r.addWidget(b)
         r.addStretch(1)
         lay.addLayout(r)
-        self.tab = QTableWidget(0, 5)
-        self.tab.setHorizontalHeaderLabels(["Data", "Titolo", "Esito", "[VERIFY]", "Avvio"])
-        self.tab.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.tab = QTableWidget(0, 6)
+        self.tab.setHorizontalHeaderLabels(["Data", "Cosa", "Titolo", "Esito", "[VERIFY]", "Avvio"])
+        self.tab.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.tab.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.tab.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tab.setAlternatingRowColors(True)
@@ -55,7 +56,8 @@ class PaginaStorico(Pagina):
         self.st = comune.carica_storico()
         self.tab.setRowCount(len(self.st))
         for i, r in enumerate(self.st):
-            for j, v in enumerate((r.get("data", ""), r.get("titolo") or r.get("messaggio", ""),
+            for j, v in enumerate((r.get("data", ""), TIPI.get(r.get("tipo"), "Articolo"),
+                                   r.get("titolo") or r.get("messaggio", ""),
                                    ESITI.get(r.get("esito"), r.get("esito", "")), str(r.get("verify", "")),
                                    r.get("origine", ""))):
                 self.tab.setItem(i, j, QTableWidgetItem(v))
@@ -69,7 +71,7 @@ class PaginaStorico(Pagina):
     def _apri(self, i):
         if 0 <= i < len(self.st):
             r = self.st[i]
-            apri((r.get("wp") or {}).get("modifica") or r.get("file") or r.get("log"))
+            apri((r.get("wp") or {}).get("modifica") or r.get("file") or r.get("link") or r.get("log"))
 
     def _copia(self):
         r = self._riga()

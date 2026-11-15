@@ -1,46 +1,54 @@
 # Orfeo · l'agente editoriale di argosnewdreams.blog
 
-**Ogni settimana una bozza di articolo scritta da un modello linguistico che gira sul tuo computer. Pubblichi tu, sempre.**
-*A local, scheduled blog-drafting agent: Ollama on your computer, drafts only, no invented links. English summary below.*
+**Tiene aggiornata la Knowledge Base del blog e sviluppa le tue bozze in articoli, con un modello linguistico che gira sul tuo computer. Le fonti sono solo istituzionali e Microsoft ufficiali; l'ultima parola è sempre tua.**
+*A local editorial agent: keeps the blog's knowledge base up to date and turns your drafts into articles. Official sources only, nothing changes without your approval. English summary below.*
 
 Fa parte della famiglia [Argo](https://github.com/Argo-s-new-dreams/argo-ai): stessa interfaccia «Studio», stesso installer, aggiornamenti dall'app.
 
-![Orfeo · Bozza](docs/screenshot-bozza.png)
+![Orfeo · Knowledge Base](docs/screenshot-kb.png)
 
 ## Funzionalità
 
 | Pagina | Cosa fa | Motore |
 | --- | --- | --- |
-| **Bozza** | Prepara la bozza: piano, attacco, sezioni, FAQ, conclusioni; registro passo per passo, riepilogo con i [VERIFY] da controllare, copia in Markdown | LLM via Ollama |
-| **In arrivo** | Il materiale del prossimo articolo: appunti, link, .docx, .pdf, immagini PNG (anche trascinandoli); riga `rubrica:` per le rubriche | Locale |
-| **Storico** | Tutte le esecuzioni, manuali e pianificate, con link alla bozza e registro | Locale |
-| **Pianifica** | Esecuzione settimanale automatica: launchd su macOS, Utilità di pianificazione su Windows | Sistema operativo |
-| **Blog** | Cartella di lavoro, lunghezza e stile; accessi in rete **facoltativi** (link, feed, WordPress) | — |
+| **Scrivi** | Incolli la tua bozza (tema, rubrica, punti, link): Orfeo cerca le fonti su Microsoft Learn e la sviluppa in un articolo completo, salvato come bozza | LLM via Ollama + Microsoft Learn MCP |
+| **Knowledge Base** | Rilegge gli articoli della Knowledge Base (BasePress), trova le affermazioni superate e propone le correzioni con fonte e citazione; **Applica**, **Scarta**, **Ripristina** | LLM via Ollama + Microsoft Learn MCP |
+| **Storico** | Articoli sviluppati e controlli della Knowledge Base, con registro di ogni esecuzione | Locale |
+| **Pianifica** | Ogni settimana: controllo della Knowledge Base e notifica che ti chiede la bozza del prossimo articolo | launchd (macOS), Utilità di pianificazione (Windows) |
+| **Blog** | Cartella di lavoro, lunghezza e stile; accessi in rete **facoltativi** (fonti online, WordPress) | — |
 | **Impostazioni** | Tema, modello Ollama, aggiornamenti | — |
 
-La struttura di ogni bozza: **TL;DR**, sezioni H3 formulate come domande, **FAQ** in H4, **Conclusioni**, **Riferimenti** con il livello della fonte, **nota di trasparenza** (art. 50 AI Act). Lo stile personale si mette in `config/prompt-editoriale-v2-compact.md`, dentro la cartella di lavoro.
-
-| In arrivo | Blog | Pianifica |
+| Scrivi | Storico | Blog |
 | --- | --- | --- |
-| ![In arrivo](docs/screenshot-arrivo.png) | ![Blog](docs/screenshot-blog.png) | ![Pianifica](docs/screenshot-pianifica.png) |
+| ![Scrivi](docs/screenshot-scrivi.png) | ![Storico](docs/screenshot-storico.png) | ![Blog](docs/screenshot-blog.png) |
+
+## Le fonti: solo istituzionali e Microsoft ufficiali
+
+Un elenco chiuso, controllato dal codice prima di ogni lettura e di ogni citazione:
+
+| Livello | Fonti |
+| --- | --- |
+| **1 · Ente pubblico** | EUR-Lex e siti `*.europa.eu`, siti `*.gov.it`, Gazzetta Ufficiale, Normattiva, Garante privacy, Senato, Camera, Banca d'Italia, Consob, Istat, siti `.gov` |
+| **2 · Microsoft Learn** | `learn.microsoft.com`, interrogato con il [Microsoft Learn MCP Server](https://learn.microsoft.com/training/support/mcp) ufficiale |
+| **3 · Microsoft ufficiale** | altre pagine `microsoft.com` (roadmap, siti di prodotto), `azure.com`, `office.com` |
+
+Un link fuori elenco viene ignorato e segnalato. Solo `https`; i domini sosia (es. `learn.microsoft.com.esempio.com`) sono rifiutati.
 
 ## Le garanzie sono nel codice, non nel prompt
 
-- **Solo bozze.** Il modulo WordPress sa creare solo post con `status: draft`: non c'è codice per pubblicare, programmare, modificare o cancellare.
-- **Nessun link inventato.** Il modello cita le fonti come `[S1]`, `[S2]`; i Riferimenti li compone Python con le pagine scaricate davvero durante l'esecuzione. Ogni altro URL scritto dal modello viene tolto e sostituito da `[VERIFY: link rimosso perché non verificato]`; una citazione inesistente diventa `[VERIFY: fonte]`.
-- **Fonti classificate.** Livello 1 fonte ufficiale primaria (EUR-Lex, Microsoft Learn, istituzioni), Livello 2 ricerca accademica (arXiv, DOI, ACM, IEEE), Livello 3 annuncio ufficiale del vendor. Le fonti non classificate sono marcate `[VERIFY]`.
-- **Niente si cancella.** Gli input usati vengono spostati in `elaborati/AAAA-MM-GG/`.
-- **[VERIFY] dove serve il tuo occhio:** dati mancanti, esperienze personali, nomi di clienti, immagini da caricare (con didascalia proposta), formulazione della nota di trasparenza. In WordPress sono evidenziati.
+- **Knowledge Base: nulla cambia senza il tuo «Applica».** Il solo codice che modifica contenuti pubblicati è `kb_applica.py`, importato soltanto dalla pagina Knowledge Base. Prima di scrivere rilegge l'articolo e rifiuta se è cambiato dopo il controllo; salva una copia di sicurezza; modifica solo il campo `content` (titolo, stato, categorie restano). **Ripristina** rimette la versione precedente.
+- **Superata solo con la prova.** Un'affermazione risulta superata solo se la citazione indicata dal modello si ritrova parola per parola nella fonte; altrimenti è «da verificare». Ogni correzione riguarda un solo paragrafo, titolo, voce di elenco o cella; in coda Orfeo aggiunge la nota «Aggiornato il… Fonti: …».
+- **Articoli nuovi: solo bozze, solo dalla tua bozza.** Orfeo non sceglie temi da solo. Su WordPress crea esclusivamente post `draft`.
+- **Nessun link inventato.** Il modello cita le fonti come `[S1]`; i Riferimenti li compone Python con le pagine lette davvero. Ogni altro URL viene tolto e sostituito da `[VERIFY: link rimosso perché non verificato]`.
+- **Niente si cancella.** Bozze e allegati usati vanno in `elaborati/AAAA-MM-GG/`; proposte applicate o scartate in `dati/kb/archivio/`.
 
 ## Il "cervello" testuale: Ollama
 
-Orfeo scrive con un modello locale servito da [Ollama](https://ollama.com) su `localhost`. Per un Mac da 16 GB:
-
 ```bash
-ollama pull gemma3:12b   # circa 8 GB
+ollama pull gemma3:12b   # circa 8 GB: adatto a un Mac da 16 GB
 ```
 
-Si può scaricare anche da *Impostazioni → Nuovo modello*. Con gemma3:12b su un Mac M4 una bozza richiede in genere qualche minuto. Se Ollama è chiuso, Orfeo prova ad aprirlo da solo.
+Si scarica anche da *Impostazioni → Nuovo modello*. Con gemma3:12b su un Mac M4 un articolo richiede qualche minuto, il controllo di un articolo della Knowledge Base uno o due. Se Ollama è chiuso, Orfeo prova ad aprirlo da solo.
 
 ## Requisiti
 
@@ -57,8 +65,8 @@ Si può scaricare anche da *Impostazioni → Nuovo modello*. Con gemma3:12b su u
 2. **Avvia l'installer**
    - macOS: tasto destro su `Installa-Mac.command` → *Apri*. Se macOS lo blocca: *Impostazioni di Sistema → Privacy e sicurezza → Apri comunque*.
    - Windows: doppio clic su `Installa-Windows.bat`. Se compare SmartScreen: *Ulteriori informazioni → Esegui comunque*.
-3. **Apri Orfeo**, in *Impostazioni* scegli il modello; nella pagina *Blog* attiva solo gli accessi in rete che ti servono.
-4. Prima bozza a mano da **Bozza → Prepara la bozza ora** (su Mac rispondi «Consenti» se chiede l'accesso a Documenti), poi attiva la **Pianificazione** (di serie lunedì alle 7:40).
+3. **Apri Orfeo**: in *Impostazioni* scegli il modello; in *Blog* attiva le fonti online e WordPress (utente e *password applicazione*), poi **Prova Microsoft Learn** e **Verifica collegamento**.
+4. Primo controllo da **Knowledge Base → Controlla ora**, prima bozza da **Scrivi**; poi attiva la **Pianificazione** (di serie lunedì alle 7:40). Su Mac rispondi «Consenti» se chiede l'accesso a Documenti.
 
 Gli installer non sono firmati digitalmente: per questo Windows e macOS mostrano un avviso. Il codice è tutto qui, leggibile.
 
@@ -66,20 +74,19 @@ Gli installer non sono firmati digitalmente: per questo Windows e macOS mostrano
 
 ## Privacy e dati
 
-- Il modello gira sul computer: **appunti e bozze non vengono mai inviati a un servizio di AI.**
-- Di serie Orfeo **non va in rete** (a parte il controllo degli aggiornamenti su GitHub, disattivabile). Nella pagina *Blog* puoi accendere, uno per uno:
-  - **Leggi i link** degli appunti: scarica quelle pagine per citarle come fonti;
-  - **Novità dai feed**: legge i feed ufficiali (di serie Microsoft 365 Roadmap e arXiv cs.AI, cs.CL) quando *In arrivo* è vuota;
-  - **WordPress**: legge i post pubblicati (per i link interni) e invia la **bozza** al tuo blog. Si autentica con una *password applicazione* salvata nel portachiavi del sistema (Portachiavi su macOS, Gestore credenziali su Windows).
-- Quando un accesso è acceso, il bollino in basso lo dichiara: «🔒 Modello locale · 🌐 in rete: …».
-- Impostazioni, storico e registri stanno in `~/orfeo-blog-env/dati/`; appunti e bozze nella cartella di lavoro (di serie `~/Documents/Orfeo`). Gli aggiornamenti non li toccano.
+- Il modello gira sul computer: **bozze e articoli non vengono mai inviati a un servizio di AI.**
+- Di serie Orfeo **non va in rete** (a parte il controllo degli aggiornamenti su GitHub, disattivabile). Nella pagina *Blog* puoi accendere:
+  - **Fonti online**: ricerche sul Microsoft Learn MCP Server (escono solo le parole cercate) e lettura delle pagine ammesse;
+  - **WordPress**: lettura di post e Knowledge Base, creazione di bozze, modifiche alla Knowledge Base solo con **Applica**. Autenticazione con una *password applicazione* nel portachiavi del sistema (Portachiavi su macOS, Gestore credenziali su Windows).
+- Il bollino in basso dichiara gli accessi attivi: «🔒 Modello locale · 🌐 in rete: …».
+- Impostazioni, storico, registri, proposte e copie di sicurezza stanno in `~/orfeo-blog-env/dati/`; bozze e articoli nella cartella di lavoro (di serie `~/Documents/Orfeo`). Gli aggiornamenti non li toccano.
 
 ### AI Act
 
-Orfeo è uno strumento di supporto alla scrittura: l'autore resta la persona che rivede e pubblica.
+Orfeo è uno strumento di supporto alla scrittura e alla manutenzione dei contenuti: decide la persona che rivede, approva e pubblica.
 
-- **Art. 50(4), Regolamento (UE) 2024/1689:** chi diffonde testo generato o manipolato dall'AI per informare il pubblico su questioni di interesse pubblico deve dichiararlo, salvo che il testo sia stato sottoposto a revisione umana o controllo editoriale e una persona ne abbia la responsabilità editoriale. Orfeo aggiunge comunque una nota di trasparenza in fondo a ogni bozza, da adattare.
-- **Art. 4 (alfabetizzazione in materia di AI):** il registro passo per passo, i [VERIFY] e i livelli delle fonti aiutano a capire cosa ha fatto il modello e dove serve il controllo umano.
+- **Art. 50(4), Regolamento (UE) 2024/1689:** chi diffonde testo generato o manipolato dall'AI per informare il pubblico su questioni di interesse pubblico deve dichiararlo, salvo che il testo sia stato sottoposto a revisione umana o controllo editoriale e una persona ne abbia la responsabilità editoriale. Orfeo aggiunge comunque una nota di trasparenza agli articoli nuovi e la nota «Aggiornato il…» con le fonti agli articoli della Knowledge Base corretti.
+- **Art. 4 (alfabetizzazione in materia di AI):** registro passo per passo, prova citata per ogni correzione, [VERIFY] e livelli delle fonti aiutano a capire cosa ha fatto il modello e dove serve il controllo umano.
 - Nessuna funzione rientra fra le pratiche vietate dall'art. 5.
 
 *Queste note non sono consulenza legale.*
@@ -90,16 +97,16 @@ Orfeo è uno strumento di supporto alla scrittura: l'autore resta la persona che
 app/
   progetto.py            identità dell'app (nome, versione, impostazioni di base)
   main.py                finestra, menu, Impostazioni, aggiornamenti, avvio senza finestra
-  pagina_bozza.py        Bozza          pagina_arrivo.py     In arrivo
-  pagina_storico.py      Storico        pagina_pianifica.py  Pianifica
+  pagina_scrivi.py       Scrivi           pagina_kb.py         Knowledge Base
+  pagina_storico.py      Storico          pagina_pianifica.py  Pianifica
   pagina_blog.py         Blog (cartella, scrittura, rete facoltativa)
-  motore.py              il lavoro di Orfeo, senza interfaccia
-  fonti.py               feed RSS/Atom, lettura pagine, livelli delle fonti
-  ingressi.py            lettura di appunti, documenti, link, immagini
-  gutenberg.py           da Markdown a blocchi Gutenberg
-  wordpress.py           post pubblicati e creazione di bozze (solo draft)
-  pianificazione.py      launchd (macOS) e Utilità di pianificazione (Windows)
-  comune.py              cartelle, rete, password, storico, notifiche
+  motore.py              dalla bozza all'articolo, senza interfaccia
+  kb.py                  controllo della Knowledge Base e proposte (non modifica mai il blog)
+  kb_applica.py          l'unico punto che modifica il blog: Applica e Ripristina
+  fonti.py               elenco chiuso delle fonti ammesse, livelli, controllo delle citazioni
+  learn_mcp.py           client del Microsoft Learn MCP Server (SDK MCP ufficiale)
+  wordpress.py           lettura di post e Knowledge Base, creazione di bozze
+  ingressi.py, gutenberg.py, pianificazione.py, comune.py, ui_comune.py
   tema.py, pagine.py, lavoro.py, dati.py, llm_locale.py, aggiornamenti.py   standard famiglia Argo
 docs/                    manuale e screenshot
 strumenti/               versione, icone, verifica pre-pubblicazione
@@ -107,7 +114,7 @@ strumenti/               versione, icone, verifica pre-pubblicazione
 
 ## Stato del progetto
 
-Prima versione. Provata con un server Ollama e un WordPress simulati; da collaudare sul Mac M4 e sul PC Windows ARM con Ollama, gemma3:12b e il blog reale.
+Collaudato con server simulati (Ollama, WordPress e Microsoft Learn MCP); da collaudare sul Mac M4 e sul PC Windows ARM con Ollama, gemma3:12b, il Learn MCP Server reale e il blog.
 
 ## Licenza
 
@@ -115,4 +122,4 @@ MIT. Licenze di terze parti in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md
 
 ## English summary
 
-Orfeo is a local desktop app (macOS Apple Silicon and Windows) that prepares one blog post draft per week. It reads notes, documents and links from an inbox folder, or optionally picks a topic from official RSS feeds of the last 7 days, and writes with a local LLM through Ollama. Network access (fetching linked pages, reading feeds, sending the draft to WordPress) is optional and off by default. WordPress posts are created as **drafts only**. References are built by code from pages actually fetched during the run; any URL produced by the model that is not one of them is removed and flagged `[VERIFY]`. Scheduling uses launchd on macOS and Task Scheduler on Windows.
+Orfeo is a local desktop app (macOS Apple Silicon and Windows) with two jobs. **Knowledge base upkeep:** it rereads the blog's knowledge base articles, extracts claims that may be outdated, looks for evidence on Microsoft Learn (through the official Learn MCP Server) and on public-institution sites, and proposes corrections; a claim counts as outdated only if the quoted evidence is actually found in the source, and nothing changes on the blog until the user clicks **Apply** (with backup, concurrency check and **Restore**). **Writing:** it turns the user's own draft into a full article, saved as a WordPress **draft**. Sources are restricted by code to public institutions, Microsoft Learn and official Microsoft pages. The LLM runs locally via Ollama; network access is optional and off by default. A weekly schedule runs the knowledge base check and asks the user for the next draft.

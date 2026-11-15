@@ -1,4 +1,4 @@
 Qui ci sono solo file FITTIZI per provare Orfeo.
 
-Per provarlo: copia appunto-esempio.md nella pagina «In arrivo» (pulsante «Aggiungi file…»)
-e premi «Prepara la bozza ora» nella pagina Bozza.
+Per provarlo: nella pagina «Scrivi» premi «Allega file…», scegli appunto-esempio.md
+e premi «Sviluppa l'articolo».

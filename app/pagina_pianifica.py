@@ -14,7 +14,8 @@ from pagine import Pagina
 ORDINE = [1, 2, 3, 4, 5, 6, 0]  # lunedì → domenica (0 = domenica, come launchd)
 
 NOTE_MAC = ("<b>Come funziona.</b> Orfeo registra un'attività di macOS (launchd) per il tuo utente, senza password "
-            "di amministratore. A quell'ora si apre in background, prepara la bozza e ti avvisa nel Centro notifiche."
+            "di amministratore. A quell'ora si apre in background, controlla la Knowledge Base e ti avvisa nel "
+            "Centro notifiche: quante proposte ci sono da approvare e la richiesta della bozza."
             "<br>• Se il Mac <b>dorme</b>, l'esecuzione parte al risveglio; se è <b>spento</b>, quella settimana salta."
             "<br>• Per svegliarlo qualche minuto prima, nel Terminale: <code>sudo pmset repeat wakeorpoweron M 07:35:00</code>"
             "<br>• La prima volta macOS può chiedere se Orfeo può accedere a Documenti: rispondi «Consenti»."
@@ -27,10 +28,11 @@ class PaginaPianifica(Pagina):
     titolo = "Pianifica"
 
     def costruisci(self, lay):
-        self.sottotitolo("Scegli quando Orfeo lavora da solo: una bozza a settimana, pronta quando ti siedi alla scrivania.")
+        self.sottotitolo("Una volta a settimana Orfeo controlla la Knowledge Base, prepara le proposte di aggiornamento "
+                         "e ti chiede la bozza del prossimo articolo. Non scrive articoli da solo.")
         box = QGroupBox("Esecuzione automatica")
         form = QFormLayout(box)
-        self.k_attiva = QCheckBox("Prepara una bozza ogni settimana")
+        self.k_attiva = QCheckBox("Ogni settimana: controllo della Knowledge Base e richiesta della bozza")
         self.c_giorno = QComboBox()
         self.c_giorno.addItems([pian.GIORNI[g].capitalize() for g in ORDINE])
         self.t_ora = QTimeEdit()
@@ -66,7 +68,7 @@ class PaginaPianifica(Pagina):
     def _stato(self):
         p, s = dati.carica_impostazioni()["pianificazione"], pian.stato()
         if p.get("attiva") and s["installata"]:
-            self.l_stato.setText(f"✅ Attiva · prossima bozza <b>{pian.descrivi(p['giorno'], p['ora'], p['minuto'])}</b>")
+            self.l_stato.setText(f"✅ Attiva · prossimo controllo <b>{pian.descrivi(p['giorno'], p['ora'], p['minuto'])}</b>")
         elif p.get("attiva"):
             self.l_stato.setText("⚠️ Risulta attiva nelle impostazioni ma non nel sistema: premi «Salva la pianificazione».")
         else:
@@ -100,4 +102,4 @@ class PaginaPianifica(Pagina):
             QMessageBox.warning(self, "Prova", f"Avvio non riuscito: {e}\nSe hai spostato l'app, reinstallala.")
             return
         QMessageBox.information(self, "Prova", "Orfeo è partito in background, come farà all'ora pianificata. "
-                                "Fra qualche minuto l'esito comparirà nello Storico.")
+                                "Fra qualche minuto l'esito del controllo comparirà nello Storico e arriverà la notifica.")

@@ -8,5 +8,5 @@ ESEMPIO FITTIZIO: la ditta e le persone sono inventate.
 - Il nero: chi controlla le risposte? Serve dire al cliente che parla con un'AI (trasparenza).
 - Idea per il finale: partire da un caso piccolo e misurabile.
 
-Fonte da leggere (se attivi «Leggi i link» nella pagina Blog):
+Fonte ammessa da leggere (se attivi le fonti online nella pagina Blog):
 https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai

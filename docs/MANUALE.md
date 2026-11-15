@@ -2,14 +2,19 @@
 
 ## 1. Cos'è
 
-Orfeo è l'agente editoriale di argosnewdreams.blog: una volta alla settimana (o quando vuoi tu) trasforma i tuoi appunti, oppure le novità della settimana, in una **bozza** di articolo. Scrive con un modello linguistico che gira sul tuo computer tramite Ollama. Non pubblica mai: l'ultima parola è tua.
+Orfeo è l'agente editoriale di argosnewdreams.blog e fa due lavori:
+
+1. **tiene aggiornata la Knowledge Base del blog**: rilegge gli articoli, trova ciò che è superato e ti propone le correzioni, con la prova presa da Microsoft Learn o da un sito istituzionale;
+2. **sviluppa le tue bozze** in articoli completi, salvati come bozze.
+
+Scrive con un modello linguistico che gira sul tuo computer tramite Ollama. Usa solo fonti istituzionali e Microsoft ufficiali. Non pubblica mai e non cambia nulla sul blog senza la tua approvazione.
 
 ## 2. Installazione
 
 ### macOS (Apple Silicon)
 1. Tasto destro su `Installa-Mac.command` → *Apri* (se macOS lo blocca: *Impostazioni di Sistema → Privacy e sicurezza → Apri comunque*).
 2. L'installer crea l'ambiente in `~/orfeo-blog-env` e l'app `~/Applications/Orfeo.app`. Non servono password di amministratore.
-3. Alla prima bozza macOS chiede se Orfeo può accedere alla cartella Documenti: rispondi **Consenti**, altrimenti le esecuzioni automatiche non vedranno la cartella.
+3. La prima volta che Orfeo usa la cartella di lavoro, macOS chiede l'accesso a Documenti: rispondi **Consenti**, altrimenti le esecuzioni automatiche non la vedranno.
 
 ### Windows (x64 e ARM)
 1. Doppio clic su `Installa-Windows.bat` (se compare SmartScreen: *Ulteriori informazioni → Esegui comunque*).
@@ -18,66 +23,94 @@ Orfeo è l'agente editoriale di argosnewdreams.blog: una volta alla settimana (o
 ### Ollama e modelli
 Installa [Ollama](https://ollama.com), poi in *Impostazioni → Nuovo modello* scrivi `gemma3:12b` e premi **Scarica modello** (circa 8 GB). Sceglilo come *Modello per i testi* e premi **Salva impostazioni**.
 
+### Primo collegamento
+Nella pagina **Blog**:
+1. spunta **Cerca le fonti su Microsoft Learn e leggi i link ammessi** e premi **Prova Microsoft Learn**;
+2. spunta **Collega il blog**, inserisci utente e *password applicazione* (wp-admin → Utenti → Profilo → Password applicazione, non la password di accesso) e premi **Verifica collegamento**;
+3. premi **Salva**.
+
 ## 3. Le funzioni
 
-### Bozza
-Il riquadro in alto riassume lo stato: modello, file in arrivo, stile, accessi in rete, pianificazione. **Prepara la bozza ora** avvia il lavoro; **Ferma** lo interrompe al passo successivo. Orfeo:
-1. legge *In arrivo*; se è vuota e hai attivato i feed, sceglie un tema dalle novità della settimana e spiega perché (il motivo e le alternative scartate sono nell'intestazione del file);
-2. progetta la struttura (titolo, TL;DR, 3-6 sezioni, 3-5 FAQ, categorie e tag proposti);
-3. scrive l'attacco, ogni sezione, le FAQ e le conclusioni;
-4. compone i Riferimenti con le sole pagine scaricate, ognuna con il suo livello;
-5. salva la bozza in `bozze/` (`.md` leggibile e `.html` a blocchi Gutenberg) e, se attivo, la crea su WordPress **come bozza**;
-6. sposta gli input usati in `elaborati/AAAA-MM-GG/` (casella *Sposta gli input usati*).
+### Knowledge Base
+**Controlla ora** esamina il numero di articoli indicato accanto, scegliendo prima quelli mai controllati o cambiati dall'ultimo controllo, poi i meno recenti. Gli articoli con una proposta in attesa non vengono ricontrollati finché non la applichi o la scarti. Per ogni articolo Orfeo:
+1. individua fino a 6 affermazioni che invecchiano: prezzi, licenze, nomi di prodotti e funzioni, limiti, ruoli, procedure, stato (anteprima o disponibile), date, norme;
+2. cerca le prove su Microsoft Learn (Microsoft Learn MCP Server ufficiale) e rilegge i link dell'articolo che puntano a fonti ammesse;
+3. per ogni affermazione decide: ✅ **confermata**, ✏️ **superata**, ❔ **non verificabile**. «Superata» vale solo se la citazione indicata si ritrova parola per parola nella fonte; altrimenti diventa «non verificabile» con il motivo;
+4. per le affermazioni superate prepara la **proposta**: riscrive solo il paragrafo, titolo, voce o cella interessati e aggiunge in coda una nota «Aggiornato il… Fonti: …».
 
-Alla fine trovi titolo, numero di **[VERIFY]**, categorie e tag proposti ed eventuali avvisi. **Copia la bozza** mette il Markdown negli appunti; **Apri in WordPress** apre l'editor del post.
+A destra vedi, per l'articolo selezionato, **Prima**, **Dopo**, **Perché**, **Fonte** con livello e citazione, e l'esito delle altre affermazioni. Poi:
+- **Applica al blog**: Orfeo rilegge l'articolo, rifiuta se è stato modificato dopo il controllo, salva una copia di sicurezza e aggiorna solo il testo;
+- **Scarta**: la proposta va in archivio, l'articolo tornerà in coda più avanti;
+- **Ripristina versione precedente**: rimette l'articolo com'era prima dell'ultimo «Applica» (facendo a sua volta una copia della versione attuale);
+- **Ricontrolla l'articolo selezionato**: un nuovo controllo solo di quell'articolo.
 
-### In arrivo
-- **Nuovo appunto**: tema, rubrica e testo; diventa un file `.md`.
-- **Aggiungi link**: uno per riga; Orfeo li legge solo se in *Blog* è attivo «Leggi le pagine dei link».
-- **Aggiungi file…** o trascinamento: `.md`, `.txt`, `.docx`, `.pdf`, `.webloc`, `.url`, `.png`. Gli altri formati restano in cartella e vengono segnalati.
-- Le immagini PNG non vengono caricate sul blog: Orfeo inserisce un segnaposto `[VERIFY: immagine …]` con una didascalia proposta.
-- Per una rubrica scrivi in un appunto la riga `rubrica: Il Bianco e il Nero`.
+Se il testo originale conteneva un link, la proposta te lo segnala: nella versione nuova va rimesso a mano.
+
+Gli articoli che parlano di prodotti non Microsoft (per esempio Anthropic e Claude) o i system prompt di solito risultano «non verificabili»: le fonti ammesse non ne parlano.
+
+### Scrivi
+1. Scrivi la bozza: **Tema** (facoltativo), **Rubrica** (es. «Il Bianco e il Nero») e il testo con idee, punti, episodi vissuti, link. I link servono solo se puntano a fonti ammesse.
+2. Puoi **allegare** documenti (`.md`, `.txt`, `.docx`, `.pdf`), link (`.webloc`, `.url`) e immagini PNG, anche trascinandoli.
+3. **Sviluppa l'articolo**: Orfeo salva la bozza in `in-arrivo`, cerca su Microsoft Learn la documentazione sui temi tecnici, progetta la struttura e scrive attacco, sezioni, FAQ e conclusioni. **Ferma** interrompe al passo successivo.
+4. Risultato: titolo, numero di **[VERIFY]**, categorie e tag proposti, eventuali avvisi. **Copia l'articolo** (Markdown), **Apri in WordPress** (se il blog è collegato, l'articolo è una bozza), **Apri il file**.
+
+Struttura di ogni articolo: TL;DR, sezioni H3 formulate come domande, FAQ in H4, Conclusioni, Riferimenti con il livello della fonte, nota di trasparenza (art. 50 AI Act). Le immagini PNG non vengono caricate: Orfeo inserisce un segnaposto `[VERIFY: immagine …]` con una didascalia proposta.
 
 ### Storico
-Ogni esecuzione con data, titolo, esito, [VERIFY] e tipo di avvio (manuale o pianificata). Doppio clic per aprire la bozza; **Apri il registro** mostra tutti i passi di quell'esecuzione.
+Ogni esecuzione: data, tipo (Articolo o Knowledge Base), titolo, esito, [VERIFY], avvio (manuale o pianificato). Doppio clic apre la bozza, l'articolo o il registro.
 
 ### Pianifica
-Scegli giorno e ora e premi **Salva la pianificazione**. **Prova adesso in background** avvia Orfeo esattamente come farà il sistema all'ora stabilita.
-- **macOS**: launchd apre Orfeo in background; se il Mac dorme parte al risveglio, se è spento quella settimana salta. Per svegliarlo qualche minuto prima: `sudo pmset repeat wakeorpoweron M 07:35:00`. A fine lavoro arriva una notifica.
-- **Windows**: un'attività dell'Utilità di pianificazione; il PC deve essere acceso con la sessione aperta. L'esito è nello Storico.
+Scegli giorno e ora e premi **Salva la pianificazione**. A quell'ora Orfeo **controlla la Knowledge Base** e ti manda una notifica: quante proposte ci sono da approvare e la richiesta della **bozza del prossimo articolo**. Non scrive articoli da solo. **Prova adesso in background** avvia Orfeo come farà il sistema.
+- **macOS**: launchd; se il Mac dorme parte al risveglio, se è spento quella settimana salta. Per svegliarlo qualche minuto prima: `sudo pmset repeat wakeorpoweron M 07:35:00`.
+- **Windows**: Utilità di pianificazione; il PC deve essere acceso con la sessione aperta. L'esito è nello Storico.
 
 ### Blog
-- **Cartella di lavoro** (di serie `~/Documents/Orfeo`): `in-arrivo`, `bozze`, `elaborati`, `config`. In `config/prompt-editoriale-v2-compact.md` va il tuo stile editoriale: prevale sullo stile di base, mai sulle regole di sicurezza (niente fatti inventati, niente link).
+- **Cartella di lavoro** (di serie `~/Documents/Orfeo`): `in-arrivo`, `bozze`, `elaborati`, `config`. In `config/prompt-editoriale-v2-compact.md` va il tuo stile editoriale: prevale sullo stile di base, mai sulle regole di sicurezza.
 - **Scrittura**: lunghezza in parole, contesto in token, creatività.
-- **Rete (facoltativa, spenta di default)**: lettura dei link, novità dai feed (formato `nome | url | livello`, le righe con `#` sono disattivate, **Prova i feed** li controlla), WordPress.
-- **WordPress**: sito, utente e *password applicazione* (wp-admin → Utenti → Profilo → Password applicazione). **Verifica collegamento** la prova; la password resta nel portachiavi del sistema.
+- **Fonti online** (spente di default): Microsoft Learn e link ammessi; numero di articoli della Knowledge Base per esecuzione.
+- **WordPress** (spento di default): sito, utente, password applicazione.
 
-## 4. Impostazioni
+## 4. Le fonti ammesse
+| Livello | Fonti |
+| --- | --- |
+| 1 · Ente pubblico | EUR-Lex e `*.europa.eu`, `*.gov.it`, Gazzetta Ufficiale, Normattiva, Garante privacy, Senato, Camera, Banca d'Italia, Consob, Istat, siti `.gov` |
+| 2 · Microsoft Learn | `learn.microsoft.com` (tramite il Microsoft Learn MCP Server) |
+| 3 · Microsoft ufficiale | altre pagine `microsoft.com`, `azure.com`, `office.com` |
+
+Qualsiasi altro sito viene ignorato e segnalato, sia nelle bozze sia negli articoli della Knowledge Base.
+
+## 5. Impostazioni
 Tema (scuro, chiaro, sistema), indirizzo di Ollama e modello per i testi, download di nuovi modelli, controllo degli aggiornamenti.
 
-## 5. Dove stanno i dati
+## 6. Dove stanno i dati
 | Cosa | Dove |
 | --- | --- |
-| Appunti, bozze, input elaborati, stile | cartella di lavoro (di serie `~/Documents/Orfeo`) |
+| Bozze, allegati, articoli, stile | cartella di lavoro (di serie `~/Documents/Orfeo`) |
 | Impostazioni, storico, registri | `~/orfeo-blog-env/dati/` |
+| Stato dei controlli della Knowledge Base | `~/orfeo-blog-env/dati/kb/stato.json` |
+| Proposte in attesa / applicate o scartate | `~/orfeo-blog-env/dati/kb/proposte/` · `dati/kb/archivio/` |
+| Copie di sicurezza degli articoli | `~/orfeo-blog-env/dati/kb/backup/` |
 | Password applicazione WordPress | Portachiavi (macOS) o Gestore credenziali (Windows), voce «Orfeo-WordPress» |
 | Pianificazione | `~/Library/LaunchAgents/blog.argosnewdreams.orfeoblog.plist` (macOS) o attività «Orfeo - bozza settimanale» (Windows) |
 
-## 6. Aggiornamenti
+## 7. Aggiornamenti
 All'avvio Orfeo legge da GitHub solo il numero di versione. Se ce n'è una nuova propone **Aggiorna ora**: sostituisce i file del programma (una copia resta in `app_precedente/`) e si riavvia. Dati, cartella di lavoro e pianificazione restano.
 
-## 7. Disinstallazione
+## 8. Disinstallazione
 1. In *Pianifica* togli la spunta e premi **Salva la pianificazione**.
 2. Cancella `~/Applications/Orfeo.app` (Mac) o i collegamenti (Windows), poi la cartella `~/orfeo-blog-env`.
 3. La cartella di lavoro e la voce nel portachiavi restano: cancellale a mano se non ti servono più.
 
-## 8. Risoluzione dei problemi
+## 9. Risoluzione dei problemi
 - **«Ollama non risponde»**: apri l'app Ollama e riprova; controlla l'indirizzo in Impostazioni.
 - **«Il modello … non è installato»**: scaricalo da *Impostazioni → Nuovo modello* e sceglilo.
-- **«Nessuna bozza (nessun-tema)»**: *In arrivo* è vuota e i feed sono spenti; aggiungi un appunto o attiva i feed in *Blog*.
-- **WordPress risponde 401 o 403**: controlla utente e password applicazione (non la password di accesso) con **Verifica collegamento**.
+- **«Microsoft Learn non raggiungibile»**: controlla la connessione; con **Prova Microsoft Learn** (pagina Blog) verifichi il collegamento.
+- **«… non offre più lo strumento microsoft_docs_search»**: Microsoft ha cambiato il server MCP; serve un aggiornamento di Orfeo.
+- **«L'articolo è stato modificato dopo il controllo»**: qualcuno l'ha cambiato in WordPress; **Scarta** la proposta e usa **Ricontrolla l'articolo selezionato**.
+- **WordPress risponde 401 o 403**: controlla utente e password applicazione con **Verifica collegamento**.
+- **«Nessun articolo (nessuna-bozza)»**: scrivi la bozza nella pagina Scrivi.
 - **La pianificazione non parte (Mac)**: in *Impostazioni di Sistema → Privacy e sicurezza → File e cartelle* controlla che Orfeo possa accedere a Documenti; guarda `~/orfeo-blog-env/dati/log/launchd.log`.
-- **Tanti [VERIFY]**: è normale con un modello da 12B; gli appunti più ricchi e i link a fonti ufficiali li riducono.
+- **Tanti «non verificabile»**: è normale per gli articoli su prodotti non Microsoft o con molte opinioni; il modello da 12B è prudente per costruzione.
 
-## 9. Privacy
-Il modello è locale: appunti e bozze non vanno a servizi di AI. Escono in rete solo gli accessi che attivi in *Blog* (pagine dei link, feed, WordPress) e il controllo degli aggiornamenti su GitHub. Il bollino in basso dice sempre quali sono attivi.
+## 10. Privacy
+Il modello è locale: bozze e articoli non vanno a servizi di AI. Escono in rete solo gli accessi che attivi in *Blog* (ricerche e pagine delle fonti ammesse, WordPress) e il controllo degli aggiornamenti su GitHub. Il bollino in basso dice sempre quali sono attivi.

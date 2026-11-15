@@ -4,3 +4,4 @@ certifi
 pypdf
 python-docx
 keyring
+mcp>=2.3,<3

@@ -7,7 +7,7 @@ con `python strumenti/nuova_versione.py "titolo della novità"`, che aggiorna an
 import os
 from pathlib import Path
 
-VERSIONE = "20261115.1434"
+VERSIONE = "20261115.1457"
 
 # --- identità -------------------------------------------------------------------------------
 NOME = "Orfeo"                           # nome mostrato (finestra, menu Start, ~/Applications)
@@ -44,16 +44,10 @@ IMPOSTAZIONI_BASE = {
     "temperatura": 0.5,
     "parole": 1400,
     # --- Orfeo: rete (facoltativa, SPENTA di default come da standard) ---
-    "leggi_link": False,                 # scarica le pagine dei link messi negli appunti (diventano le fonti citate)
-    "usa_feed": False,                   # novità della settimana dai feed ufficiali quando in-arrivo è vuota
-    "giorni_novita": 7,
-    "temi_novita": "AI generativa, Microsoft Copilot e Copilot Studio, AI Act e regolazione UE dell'intelligenza artificiale",
-    "feed": [  # verificati il 15/11/2026; formato: nome | url | livello (1 ufficiale, 2 accademico, 3 vendor)
-        "Microsoft 365 Roadmap | https://www.microsoft.com/releasecommunications/api/v2/m365/rss | 1",
-        "arXiv cs.AI | https://rss.arxiv.org/rss/cs.AI | 2",
-        "arXiv cs.CL | https://rss.arxiv.org/rss/cs.CL | 2",
-    ],
-    "wordpress_attivo": False,           # crea la bozza sul blog (solo status "draft")
+    # Fonti ammesse SOLO: enti pubblici, Microsoft Learn (server MCP ufficiale), pagine ufficiali Microsoft.
+    "fonti_online": False,               # ricerca su Microsoft Learn e lettura dei link ammessi
+    "kb_per_esecuzione": 5,              # articoli della Knowledge Base controllati a ogni esecuzione
+    "wordpress_attivo": False,           # legge post e KB, crea bozze; modifica la KB solo con «Applica»
     "wp_sito": "https://argosnewdreams.blog",
     "wp_utente": "",                     # la password applicazione sta nel portachiavi del sistema, non qui
     "pianificazione": {"attiva": False, "giorno": 1, "ora": 7, "minuto": 40},  # giorno: 0 = domenica

@@ -30,17 +30,17 @@ import llm_locale as llm
 import progetto as P
 import tema
 from lavoro import Lavoro
-from pagina_arrivo import PaginaArrivo
 from pagina_blog import PaginaBlog
-from pagina_bozza import PaginaBozza
+from pagina_kb import PaginaKB
 from pagina_pianifica import PaginaPianifica
+from pagina_scrivi import PaginaScrivi
 from pagina_storico import PaginaStorico
 from pagine import Pagina
 
 # (chiave icona, etichetta completa, etichetta breve sotto l'icona, classe della pagina)
 PAGINE = [
-    ("bozza", "Bozza", "Bozza", PaginaBozza),
-    ("input", "In arrivo", "In arrivo", PaginaArrivo),
+    ("bozza", "Scrivi", "Scrivi", PaginaScrivi),
+    ("kb", "Knowledge Base", "KB", PaginaKB),
     ("storico", "Storico", "Storico", PaginaStorico),
     ("pianifica", "Pianifica", "Pianifica", PaginaPianifica),
     ("blog", "Blog", "Blog", PaginaBlog),

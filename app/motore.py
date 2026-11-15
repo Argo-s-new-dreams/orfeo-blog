@@ -1,4 +1,4 @@
-"""motore.py - il lavoro di Orfeo, senza interfaccia: dagli input (o dalle novità della settimana) alla bozza.
+"""motore.py - dalla bozza di Luca (pagina Scrivi / cartella in-arrivo) a un articolo completo, senza interfaccia.
 
 Garanzie volute nel codice, non affidate al modello:
 - su WordPress si crea solo una bozza (wordpress.STATO_UNICO = "draft");
@@ -21,6 +21,7 @@ import dati
 import fonti as F
 import gutenberg
 import ingressi
+import learn_mcp
 import llm_locale as llm
 import progetto as P
 import wordpress as wp
@@ -131,7 +132,7 @@ class Esecuzione:
         if ris["esito"] == "ok":
             dove = "bozza su WordPress" if ris.get("wp") else "bozza salvata sul computer"
             comune.notifica("Orfeo · bozza pronta", f"{ris['titolo']} — {ris['verify']} [VERIFY] da controllare ({dove})")
-        elif ris["esito"] in ("errore", "nessun-tema"):
+        elif ris["esito"] == "errore":
             comune.notifica("Orfeo · nessuna bozza", ris.get("messaggio", "")[:180])
 
     def _esegui(self):
@@ -185,25 +186,14 @@ class Esecuzione:
         immagini = [x for x in usati if x.tipo == "immagine"]
         self.log(f"Input in in-arrivo: {len(tutti)} file, {len(materiali)} di testo/link, {len(immagini)} immagini")
 
-        self.scelta_tema = None
-        if materiali:
-            self.modo = "input"
-            self.fonti = self._fonti_da_input(materiali)
-            self.appunti = self._appunti(materiali)
-            self.rubrica = next((x.rubrica for x in materiali if x.rubrica), "")
-        elif not imp.get("usa_feed"):
-            return {"esito": "nessun-tema", "problemi": self.problemi,
-                    "messaggio": "In arrivo è vuota e le novità dai feed sono spente: aggiungi un appunto oppure "
-                                 "nella pagina Blog attiva la ricerca nelle novità dei feed ufficiali."}
-        else:
-            self.modo = "novità"
-            self.appunti = ""
-            self.rubrica = ""
-            self.fonti = self._fonti_da_novita()
-            if not self.fonti:
-                return {"esito": "nessun-tema", "messaggio": "Nessuna novità leggibile dai feed e in-arrivo vuota: nessuna bozza.",
-                        "problemi": self.problemi}
-            immagini = []  # le immagini senza appunti non hanno un contesto: restano in in-arrivo
+        if not materiali:
+            return {"esito": "nessuna-bozza", "problemi": self.problemi,
+                    "messaggio": "Non c'è nessuna bozza da sviluppare: scrivila nella pagina Scrivi (o mettila in in-arrivo)."}
+        self.modo = "bozza"
+        self.appunti = self._appunti(materiali)
+        self.rubrica = next((x.rubrica for x in materiali if x.rubrica), "")
+        self.fonti = self._fonti_da_input(materiali) + self._fonti_da_learn()
+        self.fonti = list({f.url: f for f in self.fonti}.values())[:8]
         for i, f in enumerate(self.fonti, 1):
             f.id = f"S{i}"
         self.log(f"Fonti disponibili: {len(self.fonti)}")
@@ -262,30 +252,57 @@ class Esecuzione:
 
         return {"esito": "ok", "titolo": piano["titolo"], "verify": n_verify, "file": str(p_md),
                 "wp": info_wp, "categorie": piano.get("categorie", []), "tag": piano.get("tag", []),
-                "modo": self.modo, "tema": self.scelta_tema, "input_spostati": spostati,
+                "modo": self.modo, "tipo": "articolo", "input_spostati": spostati,
                 "fonti": [f.url for f in usate], "link_interni": self.n_link_interni, "problemi": self.problemi}
 
     # ------------------------------------------------------------ fonti
     def _fonti_da_input(self, materiali):
+        """Link della bozza: si leggono solo se le fonti online sono attive e solo se il sito è ammesso."""
         out, visti = [], set()
-        if any(x.urls for x in materiali) and not self.imp.get("leggi_link"):
-            self.problemi.append("Gli appunti contengono link, ma la lettura dei link è spenta (pagina Blog): "
-                                 "nessuna fonte esterna citata")
+        urls = [u for x in materiali for u in x.urls]
+        if urls and not self.imp.get("fonti_online"):
+            self.problemi.append("La bozza contiene link, ma le fonti online sono spente (pagina Blog): non li ho letti")
             return out
-        for x in materiali:
-            for u in x.urls:
-                if u in visti or len(out) >= 8:
-                    continue
-                visti.add(u)
-                self._controlla_stop()
-                try:
-                    f = F.leggi_pagina(u)
-                    f.origine = "link-input"
-                    out.append(f)
-                    self.log(f"  letto: {u}")
-                except Exception as e:
-                    self.problemi.append(f"Link non leggibile ({u}): {e}")
-                    self.log(f"  non leggibile: {u} ({e})")
+        for u in urls:
+            if u in visti or len(out) >= 5:
+                continue
+            visti.add(u)
+            if not F.ammessa(u):
+                self.problemi.append(f"Link ignorato perché non è una fonte ammessa (enti pubblici o Microsoft): {u}")
+                continue
+            self._controlla_stop()
+            try:
+                f = F.leggi_pagina(u)
+                f.origine = "link-bozza"
+                out.append(f)
+                self.log(f"  letto: {u}")
+            except Exception as e:
+                self.problemi.append(f"Link non leggibile ({u}): {e}")
+                self.log(f"  non leggibile: {u} ({e})")
+        return out
+
+    def _fonti_da_learn(self):
+        """Cerca su Microsoft Learn (server MCP ufficiale) le fonti per i temi della bozza."""
+        if not self.imp.get("fonti_online"):
+            self.problemi.append("Fonti online spente (pagina Blog): nessuna ricerca su Microsoft Learn")
+            return []
+        r = self._chat("Rispondi solo in JSON.", f"""BOZZA DI LUCA:
+{self.appunti[:6000]}
+
+Proponi da 1 a 3 ricerche in inglese per trovare su Microsoft Learn la documentazione ufficiale sui temi
+tecnici della bozza (prodotti, licenze, funzioni, procedure). Se la bozza non parla di tecnologie Microsoft,
+restituisci un elenco vuoto.
+Rispondi solo con JSON: {{"ricerche": ["..."]}}""", json_=True, temperatura=0.1)
+        out = []
+        for q in [str(x) for x in r.get("ricerche", []) if str(x).strip()][:3]:
+            self._controlla_stop()
+            try:
+                trovate = learn_mcp.cerca(q, 2)
+                self.log(f"  Microsoft Learn «{q}»: {len(trovate)} pagine")
+                out.extend(trovate)
+            except learn_mcp.ErroreLearn as e:
+                self.problemi.append(str(e))
+                break
         return out
 
     def _appunti(self, materiali, max_tot=14000):
@@ -300,61 +317,6 @@ class Esecuzione:
                 break
         return "\n\n".join(parti)
 
-    def _fonti_da_novita(self):
-        imp = self.imp
-        self.log(f"in-arrivo vuota: cerco le novità degli ultimi {imp['giorni_novita']} giorni nei feed")
-        voci, errori = F.raccogli_novita(imp["feed"], int(imp["giorni_novita"]), self.log)
-        self.problemi.extend(f"Feed non letto: {e}" for e in errori)
-        if not voci:
-            return []
-        voci = voci[:60]
-        elenco = "\n".join(f"{i}. [{v.editore}, {v.data or 's.d.'}] {v.titolo} — {v.estratto[:280]}"
-                           for i, v in enumerate(voci, 1))
-        gia = "\n".join(f"- {p['titolo']}" for p in self.post[:30]) or "(non disponibile)"
-        richiesta = f"""Devo scegliere il tema dell'articolo settimanale di argosnewdreams.blog.
-Temi del blog: {imp['temi_novita']}. Pubblico: PMI italiane, professionisti IT e chi forma le persone sull'AI.
-
-NOVITÀ DEGLI ULTIMI GIORNI (fonti ufficiali):
-{elenco}
-
-POST GIÀ PUBBLICATI (evita di ripetere un tema già trattato; puoi invece riprenderlo da un angolo nuovo):
-{gia}
-
-Scegli UNA novità come tema principale, con il suo valore pratico per una PMI italiana. Indica fino a 3 altre voci
-dello stesso argomento utili come fonti di supporto, e 2 alternative che hai scartato.
-Rispondi solo con JSON:
-{{"scelta": <numero>, "tema": "<il tema in una frase>", "motivo": "<perché, in una o due frasi>",
- "supporto": [<numeri>], "scartate": [{{"n": <numero>, "motivo": "<frase>"}}]}}"""
-        self.log("Scelgo il tema della settimana…")
-        r = self._chat("Sei un caporedattore attento e concreto. Rispondi solo in JSON.", richiesta, json_=True, temperatura=0.2)
-        try:
-            n = int(r.get("scelta", 1))
-        except (TypeError, ValueError):
-            n = 1
-        n = n if 1 <= n <= len(voci) else 1
-        principale = voci[n - 1]
-        self.scelta_tema = {"tema": r.get("tema", principale.titolo), "motivo": r.get("motivo", ""),
-                            "fonte": principale.url,
-                            "scartate": [{"titolo": voci[s["n"] - 1].titolo, "motivo": s.get("motivo", "")}
-                                         for s in r.get("scartate", []) if isinstance(s, dict)
-                                         and isinstance(s.get("n"), int) and 1 <= s["n"] <= len(voci)][:2]}
-        self.log(f"Tema: {self.scelta_tema['tema']}")
-        scelte = [principale] + [voci[i - 1] for i in r.get("supporto", [])
-                                 if isinstance(i, int) and 1 <= i <= len(voci) and i != n][:3]
-        out = []
-        for v in scelte:
-            self._controlla_stop()
-            try:
-                pag = F.leggi_pagina(v.url)
-                v.estratto = pag.estratto or v.estratto
-                if pag.livello and not v.livello:
-                    v.livello = pag.livello
-                self.log(f"  letto: {v.url}")
-            except Exception as e:
-                self.log(f"  pagina non leggibile, uso il riassunto del feed: {v.url} ({e})")
-            out.append(v)
-        return out
-
     def _blocco_fonti(self, ids=None, max_car=2500):
         righe = []
         for f in self.fonti:
@@ -367,7 +329,7 @@ Rispondi solo con JSON:
     # ------------------------------------------------------------ piano e scrittura
     def _piano(self):
         post = "\n".join(f"[{p['pid']}] {p['titolo']}" for p in self.post[:30]) or "(nessuno)"
-        tema = f"\nTEMA SCELTO: {self.scelta_tema['tema']}\n" if self.scelta_tema else ""
+        tema = ""
         rubrica = f"\nRUBRICA: {self.rubrica} (rispettane il format)\n" if self.rubrica else ""
         richiesta = f"""Progetta un articolo per argosnewdreams.blog di circa {self.imp['parole']} parole.{tema}{rubrica}
 APPUNTI DI LUCA:
@@ -557,10 +519,6 @@ Scrivi le conclusioni: 100-150 parole con una prospettiva in avanti e un invito 
             righe.append(f"WordPress: bozza {info_wp['id']} · {info_wp['modifica']}")
         else:
             righe.append("WordPress: bozza NON creata (solo file locale)")
-        if self.scelta_tema:
-            righe.append(f"Tema scelto: {self.scelta_tema['tema']} — {self.scelta_tema['motivo']}")
-            for s in self.scelta_tema["scartate"]:
-                righe.append(f"  scartato: {s['titolo']} — {s['motivo']}")
         righe.append(f"Categorie proposte: {', '.join(piano['categorie']) or '-'} · Tag: {', '.join(piano['tag']) or '-'}")
         righe.append(f"Descrizione SEO: {piano.get('descrizione_seo', '')}")
         righe.append(f"[VERIFY] aperti: {n_verify} · fonti citate: {len(usate)} · link interni: {self.n_link_interni}")
@@ -595,10 +553,11 @@ def report_breve(ris):
 
 
 def esegui_senza_finestra():
-    """Esecuzione pianificata: nessuna finestra, esito nello Storico e nella notifica."""
-    ris = Esecuzione(log=print, origine="pianificata").avvia()
-    print(report_breve(ris))
-    return 0 if ris.get("esito") in ("ok", "saltata", "nessun-tema") else 1
+    """Esecuzione pianificata: controllo della Knowledge Base e richiesta della bozza (nessun articolo scritto da solo)."""
+    import kb
+    ris = kb.esegui_pianificata(log=print)
+    print(ris.get("titolo") or ris.get("messaggio", ""))
+    return 0 if ris.get("esito") in ("ok", "interrotta") else 1
 
 
 if __name__ == "__main__":

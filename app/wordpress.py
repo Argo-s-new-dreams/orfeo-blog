@@ -1,7 +1,8 @@
-"""wordpress.py - legge i post pubblicati e crea BOZZE sul blog tramite la REST API di WordPress.
+"""wordpress.py - legge post e articoli della Knowledge Base, crea BOZZE di articoli (REST API di WordPress).
 
-Sicurezza: questo modulo può solo creare post con status "draft". Non esiste una funzione per
-pubblicare, programmare, modificare o cancellare post: è una scelta voluta.
+Sicurezza: questo modulo può solo LEGGERE e creare post con status "draft". La sola modifica di contenuti
+pubblicati (gli articoli della Knowledge Base) sta in kb_applica.py, che viene chiamato unicamente dal pulsante
+«Applica» nell'interfaccia, dopo la conferma di Luca: mai dal motore né dalla pianificazione.
 """
 import base64
 import json
@@ -52,6 +53,30 @@ def comune_html(t):
     import html
     import re
     return html.unescape(re.sub(r"<[^>]+>", "", t)).strip()
+
+
+def elenco_kb(sito, utente, password, tipo="knowledgebase"):
+    """Articoli pubblicati della Knowledge Base (BasePress), con il contenuto a blocchi originale."""
+    out, pagina = [], 1
+    while True:
+        q = urlencode({"per_page": 100, "page": pagina, "context": "edit", "status": "publish",
+                       "_fields": "id,title,link,modified_gmt,content"})
+        dati = _chiama(f"{_api(sito)}/{tipo}?{q}", intestazioni=_auth(utente, password)) or []
+        for p in dati:
+            out.append({"id": p["id"], "titolo": comune_html((p.get("title") or {}).get("raw") or
+                                                             (p.get("title") or {}).get("rendered", "")),
+                        "link": p.get("link", ""), "modified_gmt": p.get("modified_gmt", ""),
+                        "raw": (p.get("content") or {}).get("raw", "")})
+        if len(dati) < 100:
+            return out
+        pagina += 1
+
+
+def leggi_kb(sito, utente, password, pid, tipo="knowledgebase"):
+    q = urlencode({"context": "edit", "_fields": "id,title,link,modified_gmt,content"})
+    p = _chiama(f"{_api(sito)}/{tipo}/{int(pid)}?{q}", intestazioni=_auth(utente, password))
+    return {"id": p["id"], "link": p.get("link", ""), "modified_gmt": p.get("modified_gmt", ""),
+            "raw": (p.get("content") or {}).get("raw", "")}
 
 
 def verifica(sito, utente, password):

@@ -1,25 +1,17 @@
-"""pagina_blog.py - cartella di lavoro, regole di scrittura e collegamenti in rete FACOLTATIVI (feed, link, WordPress).
+"""pagina_blog.py - cartella di lavoro, regole di scrittura e collegamenti in rete FACOLTATIVI (fonti, WordPress).
 
 Standard famiglia Argo: tutto ciò che va in rete è spento di default e si accende qui, in modo visibile.
 """
-from PySide6.QtWidgets import (QCheckBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGroupBox, QHBoxLayout, QLabel,
-                               QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QSpinBox)
+from PySide6.QtWidgets import (QCheckBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGroupBox, QHBoxLayout,
+                               QLineEdit, QMessageBox, QPushButton, QSpinBox)
 
 import comune
 import dati
-import fonti as F
 import motore
 import wordpress as wp
 from lavoro import Lavoro
-from pagina_bozza import aggiorna_bollino
+from ui_comune import aggiorna_bollino, nota
 from pagine import Pagina
-
-
-def nota(testo):
-    l_ = QLabel(testo)
-    l_.setWordWrap(True)
-    l_.setProperty("ruolo", "tenue")
-    return l_
 
 
 class PaginaBlog(Pagina):
@@ -62,37 +54,30 @@ class PaginaBlog(Pagina):
         f.addRow("", nota("Il modello si sceglie in Impostazioni. Per un Mac da 16 GB: gemma3:12b con 16384 token."))
         lay.addWidget(g)
 
-        g = QGroupBox("Rete (facoltativa, spenta di default)")
+        g = QGroupBox("Fonti online (facoltative, spente di default)")
         f = QFormLayout(g)
-        self.k_link = QCheckBox("Leggi le pagine dei link messi negli appunti (diventano le fonti citate)")
-        self.k_link.setChecked(bool(imp["leggi_link"]))
-        self.k_feed = QCheckBox("Se «In arrivo» è vuota, cerca un tema nelle novità dei feed ufficiali")
-        self.k_feed.setChecked(bool(imp["usa_feed"]))
-        self.s_giorni = QSpinBox()
-        self.s_giorni.setRange(1, 31)
-        self.s_giorni.setValue(int(imp["giorni_novita"]))
-        self.e_temi = QLineEdit(imp["temi_novita"])
-        self.t_feed = QPlainTextEdit("\n".join(imp["feed"]))
-        self.t_feed.setFixedHeight(100)
+        self.k_fonti = QCheckBox("Cerca le fonti su Microsoft Learn e leggi i link ammessi")
+        self.k_fonti.setChecked(bool(imp["fonti_online"]))
+        self.s_kb = QSpinBox()
+        self.s_kb.setRange(1, 60)
+        self.s_kb.setValue(int(imp.get("kb_per_esecuzione", 5)))
         r = QHBoxLayout()
-        self.b_feed = QPushButton("Prova i feed")
-        self.b_feed.clicked.connect(self._prova_feed)
-        r.addWidget(self.b_feed)
+        self.b_learn = QPushButton("Prova Microsoft Learn")
+        self.b_learn.clicked.connect(self._prova_learn)
+        r.addWidget(self.b_learn)
         r.addStretch(1)
-        f.addRow("", self.k_link)
-        f.addRow("", self.k_feed)
-        f.addRow("Ultimi giorni", self.s_giorni)
-        f.addRow("Temi", self.e_temi)
-        f.addRow("Feed", self.t_feed)
+        f.addRow("", self.k_fonti)
+        f.addRow("Articoli KB per esecuzione", self.s_kb)
         f.addRow("", r)
-        f.addRow("", nota("Una riga per feed: <code>nome | url | livello</code> (1 fonte ufficiale, 2 ricerca "
-                          "accademica, 3 annuncio del vendor). Le righe che iniziano con # sono disattivate. "
-                          "Esce in rete solo la richiesta della pagina: i tuoi appunti restano sul computer."))
+        f.addRow("", nota("Fonti ammesse, e solo queste: <b>enti pubblici</b> (EUR-Lex e siti *.europa.eu, *.gov.it, "
+                          "Gazzetta Ufficiale, Normattiva, Garante privacy…), <b>Microsoft Learn</b> (tramite il server "
+                          "MCP ufficiale learn.microsoft.com/api/mcp) e <b>pagine ufficiali Microsoft</b>. "
+                          "Esce in rete solo la richiesta di ricerca o di pagina: le tue bozze restano sul computer."))
         lay.addWidget(g)
 
-        g = QGroupBox("WordPress (solo bozze, spento di default)")
+        g = QGroupBox("WordPress (spento di default)")
         f = QFormLayout(g)
-        self.k_wp = QCheckBox("Crea la bozza anche sul blog e leggi i post pubblicati per i link interni")
+        self.k_wp = QCheckBox("Collega il blog: leggi post e Knowledge Base, crea gli articoli come bozze")
         self.k_wp.setChecked(bool(imp["wordpress_attivo"]))
         self.e_sito = QLineEdit(imp["wp_sito"])
         self.e_utente = QLineEdit(imp["wp_utente"])
@@ -111,8 +96,8 @@ class PaginaBlog(Pagina):
         f.addRow("Password applicazione", self.e_pw)
         f.addRow("", r)
         f.addRow("", nota("Crea una <i>password applicazione</i> in wp-admin → Utenti → Profilo (non la password di "
-                          "accesso). Resta nel portachiavi del sistema, mai su file. Orfeo può solo creare bozze: "
-                          "non pubblica e non modifica post esistenti."))
+                          "accesso). Resta nel portachiavi del sistema, mai su file. Gli articoli nuovi diventano solo "
+                          "bozze; gli articoli della Knowledge Base cambiano solo quando premi «Applica»."))
         lay.addWidget(g)
 
         r = QHBoxLayout()
@@ -142,34 +127,22 @@ class PaginaBlog(Pagina):
         self.b_wp.setEnabled(False)
         self.tieni(lav).start()
 
-    def _prova_feed(self):
-        righe, giorni = self.t_feed.toPlainText().splitlines(), self.s_giorni.value()
-
-        def fn(l):
-            out = []
-            for nome, url, liv in F.analizza_righe_feed(righe):
-                if l.fermato():
-                    break
-                try:
-                    out.append(f"✅ {nome or url}: {len(F.leggi_feed(url, nome, liv, giorni))} novità in {giorni} giorni")
-                except Exception as e:
-                    out.append(f"❌ {nome or url}: {e}")
-            return "\n".join(out) or "Nessun feed attivo."
-        lav = Lavoro(fn, self)
-        lav.sig_fatto.connect(lambda t: (self.b_feed.setEnabled(True), QMessageBox.information(self, "Prova feed", t)))
-        lav.sig_errore.connect(lambda e: (self.b_feed.setEnabled(True), QMessageBox.warning(self, "Prova feed", e)))
-        self.b_feed.setEnabled(False)
+    def _prova_learn(self):
+        import learn_mcp
+        lav = Lavoro(lambda _l: learn_mcp.cerca("Microsoft 365 Copilot licensing", 3), self)
+        lav.sig_fatto.connect(lambda r: (self.b_learn.setEnabled(True), QMessageBox.information(
+            self, "Microsoft Learn", "✅ Collegamento riuscito. Prime pagine trovate:\n\n" +
+            "\n".join(f"• {f.titolo}" for f in r) if r else "Collegato, ma la ricerca non ha restituito pagine.")))
+        lav.sig_errore.connect(lambda e: (self.b_learn.setEnabled(True), QMessageBox.warning(self, "Microsoft Learn", e)))
+        self.b_learn.setEnabled(False)
         self.tieni(lav).start()
 
     def salva(self):
         imp = dati.carica_impostazioni()
         utente = self.e_utente.text().strip()
         imp.update(cartella=self.e_cart.text().strip(), parole=self.s_parole.value(), contesto=self.s_ctx.value(),
-                   temperatura=round(self.s_temp.value(), 2), leggi_link=self.k_link.isChecked(),
-                   usa_feed=self.k_feed.isChecked(), giorni_novita=self.s_giorni.value(),
-                   temi_novita=self.e_temi.text().strip(),
-                   feed=[r for r in self.t_feed.toPlainText().splitlines() if r.strip()],
-                   wordpress_attivo=self.k_wp.isChecked(), wp_sito=self.e_sito.text().strip().rstrip("/"),
+                   temperatura=round(self.s_temp.value(), 2), fonti_online=self.k_fonti.isChecked(),
+                   kb_per_esecuzione=self.s_kb.value(), wordpress_attivo=self.k_wp.isChecked(), wp_sito=self.e_sito.text().strip().rstrip("/"),
                    wp_utente=utente)
         try:
             if self.e_pw.text().strip():
