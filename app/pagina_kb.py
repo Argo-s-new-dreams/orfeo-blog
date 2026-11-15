@@ -4,11 +4,12 @@
 """
 import html
 import re
+import time
 from datetime import datetime
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView, QMessageBox, QPlainTextEdit,
-                               QPushButton, QSpinBox, QSplitter, QTableWidget, QTableWidgetItem, QTextBrowser,
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView, QLabel, QMessageBox, QPlainTextEdit,
+                               QProgressBar, QPushButton, QSpinBox, QSplitter, QTableWidget, QTableWidgetItem, QTextBrowser,
                                QVBoxLayout, QWidget)
 
 import comune
@@ -20,6 +21,7 @@ from lavoro import Lavoro
 from pagine import Pagina
 from ui_comune import apri, nota
 
+PREFISSO = "\x00PROGRESSO:"  # riconosce i messaggi di avanzamento tra le righe del registro
 ESITI = {"da_aggiornare": "✏️ da aggiornare", "aggiornato": "✅ in regola", "non_verificabile": "❔ non verificabile",
          "scartata": "↷ proposta scartata", "ripristinato": "↩︎ ripristinato", "errore": "❌ errore"}
 
@@ -90,10 +92,27 @@ class PaginaKB(Pagina):
         div.setMinimumHeight(380)
         lay.addWidget(div, 1)
 
+        # avanzamento: fase corrente, barra e tempo trascorso (il modello locale può impiegare minuti per passo)
+        ra = QHBoxLayout()
+        self.l_fase = QLabel("Fermo.")
+        self.l_fase.setWordWrap(True)
+        self.barra = QProgressBar()
+        self.barra.setRange(0, 100)
+        self.barra.setValue(0)
+        self.barra.setMaximumWidth(320)
+        self.l_tempo = QLabel("")
+        ra.addWidget(self.l_fase, 1)
+        ra.addWidget(self.barra)
+        ra.addWidget(self.l_tempo)
+        lay.addLayout(ra)
+        self._inizio = None
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tic)
+
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
-        self.log.setMaximumHeight(140)
-        self.log.setPlaceholderText("Registro del controllo.")
+        self.log.setMinimumHeight(220)
+        self.log.setPlaceholderText("Registro del controllo: qui vedi ogni passaggio (affermazioni, ricerche, esiti).")
         lay.addWidget(self.log)
         lay.addWidget(nota("Fonti ammesse: enti pubblici (Livello 1), Microsoft Learn (Livello 2), pagine ufficiali "
                            "Microsoft (Livello 3). Un'affermazione risulta superata solo se la citazione si ritrova "
@@ -184,7 +203,19 @@ class PaginaKB(Pagina):
         self.finestra.statusBar().showMessage(messaggio)
         self.tieni(lav).start()
 
+    def _tic(self):
+        if self._inizio:
+            s = int(time.monotonic() - self._inizio)
+            self.l_tempo.setText(f"{self.barra.value()}% · ⏱ {s // 60}:{s % 60:02d}")
+
+    def _avanza(self, pct, fase):
+        self.barra.setValue(pct)
+        self.l_fase.setText(fase)
+        self._tic()
+
     def _libera(self):
+        self._timer.stop()
+        self._inizio = None
         self.lav = None
         self.b_vai.setEnabled(True)
         self.b_stop.setEnabled(False)
@@ -197,12 +228,29 @@ class PaginaKB(Pagina):
         imp["kb_per_esecuzione"] = self.s_quanti.value()
         dati.salva_impostazioni(imp)
         self.log.clear()
-        lav = Lavoro(lambda l: kb.Revisione(imp, log=l.stato, stop=l.fermato, solo_id=solo_id).avvia(), self)
-        lav.sig_stato.connect(lambda t: (self.log.appendPlainText(t),
-                                         self.finestra.statusBar().showMessage(t.split("] ", 1)[-1][:120])))
+        # l'avanzamento viaggia sullo stesso segnale del registro, con un prefisso che non finisce nel log
+        lav = Lavoro(lambda l: kb.Revisione(imp, log=l.stato, stop=l.fermato, solo_id=solo_id,
+                                            progresso=lambda p, f: l.stato(f"{PREFISSO}{p}|{f}")).avvia(), self)
+        lav.sig_stato.connect(self._messaggio)
+        self.barra.setValue(0)
+        self.l_fase.setText("Avvio: collegamento a WordPress e a Ollama…")
+        self._inizio = time.monotonic()
+        self.l_tempo.setText("⏱ 0:00")
+        self._timer.start(1000)
         lav.sig_fatto.connect(self._fine_controllo)
         lav.sig_errore.connect(lambda e: self._fine_controllo({"esito": "errore", "messaggio": e}))
         self._occupa(lav, "Orfeo sta controllando la Knowledge Base…")
+
+    def _messaggio(self, t):
+        if t.startswith(PREFISSO):
+            pct, _, fase = t[len(PREFISSO):].partition("|")
+            self._avanza(int(pct), fase)
+            return
+        self.log.appendPlainText(t)
+        if "  esito: " in t:  # un articolo è finito: la tabella mostra subito il risultato
+            self.aggiorna()
+        self.log.verticalScrollBar().setValue(self.log.verticalScrollBar().maximum())
+        self.finestra.statusBar().showMessage(t.split("] ", 1)[-1][:120])
 
     def _ricontrolla(self):
         r = self._sel()
@@ -213,7 +261,10 @@ class PaginaKB(Pagina):
         ris.setdefault("origine", "manuale")
         comune.aggiungi_storico(ris)
         self._libera()
+        self.l_fase.setText({"ok": "Controllo finito.", "interrotta": "Controllo fermato."}.get(ris.get("esito"),
+                                                                                              "Controllo non riuscito."))
         if ris.get("esito") == "ok":
+            self.barra.setValue(100)
             self.finestra.statusBar().showMessage(ris["titolo"] + ".", 8000)
         else:
             QMessageBox.warning(self, "Knowledge Base", ris.get("messaggio", "Controllo non riuscito."))

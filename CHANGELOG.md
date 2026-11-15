@@ -2,6 +2,11 @@
 
 Le versioni hanno il formato `AAAAMMGG.HHMM` (ora di Roma). Il manuale completo è in [docs/MANUALE.md](docs/MANUALE.md).
 
+## 20261115.1554: Avanzamento visibile nel controllo della Knowledge Base
+- Barra di avanzamento, fase corrente e tempo trascorso sotto la tabella
+- Registro dettagliato: affermazioni trovate, ricerche su Microsoft Learn, fonti ammesse ed esito di ogni verifica
+- La tabella si aggiorna dopo ogni articolo, senza aspettare la fine del giro
+
 ## 20261115.1542: Collegamento a WordPress.com con OAuth
 - Nuovo metodo consigliato «WordPress.com»: Orfeo usa l'API ufficiale public-api.wordpress.com e non viene più bloccato dalla modalità difensiva del sito
 - Registrazione una tantum su developer.wordpress.com/apps, poi «Collega con WordPress.com» dal browser; token e segreto solo nel portachiavi

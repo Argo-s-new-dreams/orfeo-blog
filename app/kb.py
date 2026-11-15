@@ -136,9 +136,12 @@ def blocco_nota(modifiche, quando):
 
 # ---------------------------------------------------------------- revisione
 class Revisione:
-    def __init__(self, imp=None, log=print, stop=None, quanti=None, solo_id=None):
+    def __init__(self, imp=None, log=print, stop=None, quanti=None, solo_id=None, progresso=None):
         self.imp = imp or dati.carica_impostazioni()
         self._log = log
+        # progresso(percentuale 0-100, fase): facoltativo, lo usa la pagina KB per barra e fase corrente
+        self._progresso = progresso
+        self._tot, self._i = 1, 0
         self.stop = stop or (lambda: False)
         self.quanti = int(quanti or self.imp.get("kb_per_esecuzione", 5))
         self.solo_id = solo_id
@@ -149,6 +152,15 @@ class Revisione:
             self._log(f"[{datetime.now():%H:%M:%S}] {t}")
         except Exception:
             pass
+
+    def prog(self, frazione_articolo, fase):
+        """Avanzamento complessivo = articoli finiti + frazione dell'articolo in corso."""
+        if self._progresso:
+            try:
+                pct = int(100 * (self._i + max(0.0, min(1.0, frazione_articolo))) / max(1, self._tot))
+                self._progresso(pct, fase)
+            except Exception:
+                pass
 
     def _ferma_se_serve(self):
         if self.stop():
@@ -173,6 +185,7 @@ class Revisione:
         self.conn = wp.connessione(imp)
         if not imp.get("modello_chat"):
             raise RuntimeError("Nessun modello scelto: vai in Impostazioni → Modello linguistico locale.")
+        self.log(f"Collegamento: {self.conn.descrizione} · modello {imp['modello_chat']}")
         if not llm.assicura_avviato(imp["ollama_url"], log=self.log):
             raise RuntimeError(f"Ollama non risponde su {imp['ollama_url']}: aprilo e riprova.")
 
@@ -206,8 +219,12 @@ class Revisione:
                 return (0 if not s else 1 if cambiato else 2, s.get("ultimo_controllo", ""))
             scelti = sorted((a for a in articoli if str(a["id"]) not in in_attesa), key=priorita)[:self.quanti]
         n_prop = 0
+        self._tot = max(1, len(scelti))
+        self.log(f"Da controllare in questo giro: {len(scelti)} (prima i mai controllati, poi quelli modificati)")
         for i, a in enumerate(scelti, 1):
-            self.log(f"[{i}/{len(scelti)}] {a['titolo']}")
+            self._i = i - 1
+            self.log(f"── [{i}/{len(scelti)}] {a['titolo']}")
+            self.prog(0, f"Articolo {i} di {len(scelti)}: {a['titolo']}")
             try:
                 esito = self._revisiona(a)
             except (Interrotto, KeyboardInterrupt):
@@ -219,7 +236,10 @@ class Revisione:
             stato[str(a["id"])] = {"titolo": a["titolo"], "link": a["link"], "impronta": impronta(a["raw"]),
                                    "ultimo_controllo": datetime.now().strftime("%Y-%m-%d %H:%M"), **esito}
             salva_stato(stato)
+            self.log(f"  esito: {esito.get('esito', '?').replace('_', ' ')}")
             n_prop += 1 if esito.get("esito") == "da_aggiornare" else 0
+        self._i = self._tot
+        self.prog(0, "Controllo finito")
         return {"esito": "ok", "controllati": len(scelti), "proposte": n_prop, "totale": len(articoli),
                 "titolo": f"Knowledge Base: {_n(len(scelti), 'articolo controllato', 'articoli controllati')}, "
                           f"{n_prop} da aggiornare"}
@@ -233,6 +253,9 @@ class Revisione:
         if len(testo) > 14000:
             testo = testo[:14000]
             self.problemi.append(f"{a['titolo']}: articolo lungo, controllata solo la prima parte")
+        self.log(f"  {len(segs)} paragrafi · chiedo al modello quali affermazioni possono essere superate "
+                 f"(con un modello da 12B può servire qualche minuto)…")
+        self.prog(0.02, f"{a['titolo']}: individuo le affermazioni da verificare")
         r = self._chat_json(f"""ARTICOLO: {a['titolo']}
 {testo}
 
@@ -260,18 +283,27 @@ Rispondi solo con JSON: {{"affermazioni": [{{"segmento": "T5", "affermazione": "
             if len(da_articolo) >= 3:
                 break
 
+        for k, x in enumerate(aff, 1):
+            self.log(f"   {k}. «{str(x.get('affermazione', ''))[:110]}»")
         controlli, modifiche, usati = [], [], set()
-        for x in aff:
+        for k, x in enumerate(aff, 1):
             self._ferma_se_serve()
+            ricerca = str(x.get("ricerca") or x.get("affermazione"))
+            self.prog(0.15 + 0.85 * (k - 1) / len(aff), f"{a['titolo']}: affermazione {k} di {len(aff)}, cerco le fonti")
+            self.log(f"  [{k}/{len(aff)}] cerco su Microsoft Learn: «{ricerca[:90]}»")
             try:
-                trovate = learn_mcp.cerca(str(x.get("ricerca") or x.get("affermazione")), 3)
+                trovate = learn_mcp.cerca(ricerca, 3)
             except learn_mcp.ErroreLearn as e:
                 self.problemi.append(str(e))
+                self.log(f"     Microsoft Learn non risponde: {e}")
                 trovate = []
             fonti_x = (trovate + da_articolo)[:5]
-            for k, f in enumerate(fonti_x, 1):
-                f.id = f"S{k}"
+            for j, f in enumerate(fonti_x, 1):
+                f.id = f"S{j}"
+            self.log(f"     fonti ammesse: {len(fonti_x)}" + (" · " + "; ".join(f.titolo[:50] for f in fonti_x[:3]) if fonti_x else ""))
+            self.prog(0.15 + 0.85 * (k - 0.5) / len(aff), f"{a['titolo']}: affermazione {k} di {len(aff)}, confronto con le fonti")
             c = self._verifica(x, per_id[x["segmento"]], fonti_x)
+            self.log(f"     → {c['esito'].replace('_', ' ')}: {c['motivo'][:120]}")
             controlli.append(c)
             if c["esito"] == "superata" and x["segmento"] not in usati:
                 usati.add(x["segmento"])
