@@ -61,18 +61,24 @@ def http(url, dati_post=None, intestazioni=None, metodo=None, timeout=25):
 # ---------------------------------------------------------------- password WordPress
 # keyring usa il Portachiavi su macOS e il Gestore credenziali su Windows: la password non finisce mai su file.
 def leggi_password(utente):
+    """Cerca prima con il nome pulito, poi con la «@» davanti (le versioni precedenti lo salvavano così)."""
+    utente = (utente or "").strip().lstrip("@")
     if not utente:
         return ""
     try:
         import keyring
-        return keyring.get_password(SERVIZIO_PASSWORD, utente) or ""
+        for nome in (utente, "@" + utente):
+            pw = keyring.get_password(SERVIZIO_PASSWORD, nome)
+            if pw:
+                return pw
     except Exception:
-        return ""
+        pass
+    return ""
 
 
 def salva_password(utente, password):
     import keyring
-    keyring.set_password(SERVIZIO_PASSWORD, utente, password)
+    keyring.set_password(SERVIZIO_PASSWORD, (utente or "").strip().lstrip("@"), password)
 
 
 # ---------------------------------------------------------------- varie

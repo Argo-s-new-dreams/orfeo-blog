@@ -115,7 +115,7 @@ class PaginaBlog(Pagina):
             self.e_cart.setText(d)
 
     def _verifica_wp(self):
-        sito, utente = self.e_sito.text().strip(), self.e_utente.text().strip()
+        sito, utente = self.e_sito.text().strip(), wp.pulisci_utente(self.e_utente.text())
         pw = self.e_pw.text().strip() or comune.leggi_password(utente)
         if not (utente and pw):
             QMessageBox.information(self, "WordPress", "Inserisci utente e password applicazione.")
@@ -139,7 +139,8 @@ class PaginaBlog(Pagina):
 
     def salva(self):
         imp = dati.carica_impostazioni()
-        utente = self.e_utente.text().strip()
+        utente = wp.pulisci_utente(self.e_utente.text())
+        self.e_utente.setText(utente)
         imp.update(cartella=self.e_cart.text().strip(), parole=self.s_parole.value(), contesto=self.s_ctx.value(),
                    temperatura=round(self.s_temp.value(), 2), fonti_online=self.k_fonti.isChecked(),
                    kb_per_esecuzione=self.s_kb.value(), wordpress_attivo=self.k_wp.isChecked(), wp_sito=self.e_sito.text().strip().rstrip("/"),

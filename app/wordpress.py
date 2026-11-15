@@ -22,21 +22,51 @@ def _api(sito):
     return sito.rstrip("/") + "/wp-json/wp/v2"
 
 
+def pulisci_utente(utente):
+    """Il nome utente WordPress non ha la chiocciola: «@lucaborio» → «lucaborio»."""
+    return (utente or "").strip().lstrip("@").strip()
+
+
 def _auth(utente, password):
-    tok = base64.b64encode(f"{utente}:{password.replace(' ', '')}".encode()).decode()
+    tok = base64.b64encode(f"{pulisci_utente(utente)}:{password.replace(' ', '')}".encode()).decode()
     return {"Authorization": f"Basic {tok}"}
+
+
+MSG_DIFENSIVA = ("WordPress.com sta proteggendo il sito con la «modalità difensiva» (verifica anti-bot "
+                 "«Checking your browser…»): blocca qualunque programma prima ancora di controllare utente e "
+                 "password. Disattivala nelle impostazioni Server dell'hosting (wp-admin → Hosting → Overview → "
+                 "Settings → Server → Defensive mode) oppure aspetta che scada; se l'ha attivata lo staff di "
+                 "WordPress.com, chiedi al supporto di disattivarla.")
+
+
+def _e_sfida_antibot(corpo, tipo=""):
+    """La modalità difensiva di WordPress.com risponde con una pagina HTML di verifica, non con JSON."""
+    t = corpo[:4000].lower()
+    return ("__challenge" in t or "hashcash" in t or "checking your browser" in t) and "json" not in tipo.lower()
 
 
 def _chiama(url, dati=None, intestazioni=None, metodo=None):
     try:
-        _, corpo, _ = comune.http(url, dati, intestazioni, metodo, timeout=30)
-        return json.loads(corpo.decode("utf-8") or "null")
+        _, corpo, tipo = comune.http(url, dati, intestazioni, metodo, timeout=30)
+        testo = corpo.decode("utf-8", "replace")
+        if _e_sfida_antibot(testo, tipo):
+            raise ErroreWP(MSG_DIFENSIVA)
+        try:
+            return json.loads(testo or "null")
+        except json.JSONDecodeError:
+            raise ErroreWP(f"WordPress ha risposto con una pagina invece che con dati: {testo[:160]}") from None
     except urllib.error.HTTPError as e:
-        dettaglio = e.read().decode("utf-8", "replace")[:300]
+        dettaglio = e.read().decode("utf-8", "replace")
+        if _e_sfida_antibot(dettaglio, e.headers.get("Content-Type", "")):
+            raise ErroreWP(MSG_DIFENSIVA) from None
+        try:
+            msg = json.loads(dettaglio).get("message", "")
+        except Exception:
+            msg = dettaglio[:200]
         if e.code in (401, 403):
-            raise ErroreWP(f"WordPress ha rifiutato le credenziali ({e.code}). Controlla utente e password "
-                           f"applicazione nelle Impostazioni. Dettaglio: {dettaglio}") from None
-        raise ErroreWP(f"WordPress ha risposto {e.code}: {dettaglio}") from None
+            raise ErroreWP(f"WordPress ha rifiutato l'accesso ({e.code}): {msg} — controlla utente (senza «@») e "
+                           "password applicazione nella pagina Blog.") from None
+        raise ErroreWP(f"WordPress ha risposto {e.code}: {msg}") from None
     except urllib.error.URLError as e:
         raise ErroreWP(f"WordPress non raggiungibile: {e}") from None
 

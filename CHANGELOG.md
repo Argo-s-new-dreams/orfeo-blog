@@ -2,6 +2,10 @@
 
 Le versioni hanno il formato `AAAAMMGG.HHMM` (ora di Roma). Il manuale completo è in [docs/MANUALE.md](docs/MANUALE.md).
 
+## 20261115.1515: WordPress: modalità difensiva riconosciuta
+- Se WordPress.com mostra la verifica anti-bot «Checking your browser…», Orfeo lo dice chiaramente e spiega come disattivarla, invece di dare la colpa alle credenziali
+- Il nome utente WordPress viene ripulito dalla «@» iniziale; la password già salvata resta valida
+
 ## 20261115.1457: Knowledge Base e bozze dell'utente
 - Nuova pagina Knowledge Base: Orfeo rilegge gli articoli, trova le affermazioni superate e propone le correzioni con fonte e citazione verificata; Applica, Scarta e Ripristina, con copia di sicurezza
 - Nuova pagina Scrivi: Orfeo sviluppa la tua bozza in un articolo, cercando le fonti su Microsoft Learn (Microsoft Learn MCP Server ufficiale)
