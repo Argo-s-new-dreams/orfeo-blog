@@ -8,12 +8,12 @@ Orfeo è l'agente editoriale di argosnewdreams.blog: una volta alla settimana (o
 
 ### macOS (Apple Silicon)
 1. Tasto destro su `Installa-Mac.command` → *Apri* (se macOS lo blocca: *Impostazioni di Sistema → Privacy e sicurezza → Apri comunque*).
-2. L'installer crea l'ambiente in `~/orfeo-env` e l'app `~/Applications/Orfeo.app`. Non servono password di amministratore.
+2. L'installer crea l'ambiente in `~/orfeo-blog-env` e l'app `~/Applications/Orfeo.app`. Non servono password di amministratore.
 3. Alla prima bozza macOS chiede se Orfeo può accedere alla cartella Documenti: rispondi **Consenti**, altrimenti le esecuzioni automatiche non vedranno la cartella.
 
 ### Windows (x64 e ARM)
 1. Doppio clic su `Installa-Windows.bat` (se compare SmartScreen: *Ulteriori informazioni → Esegui comunque*).
-2. L'installer crea l'ambiente in `%USERPROFILE%\orfeo-env` e i collegamenti su Desktop e menu Start.
+2. L'installer crea l'ambiente in `%USERPROFILE%\orfeo-blog-env` e i collegamenti su Desktop e menu Start.
 
 ### Ollama e modelli
 Installa [Ollama](https://ollama.com), poi in *Impostazioni → Nuovo modello* scrivi `gemma3:12b` e premi **Scarica modello** (circa 8 GB). Sceglilo come *Modello per i testi* e premi **Salva impostazioni**.
@@ -59,16 +59,16 @@ Tema (scuro, chiaro, sistema), indirizzo di Ollama e modello per i testi, downlo
 | Cosa | Dove |
 | --- | --- |
 | Appunti, bozze, input elaborati, stile | cartella di lavoro (di serie `~/Documents/Orfeo`) |
-| Impostazioni, storico, registri | `~/orfeo-env/dati/` |
+| Impostazioni, storico, registri | `~/orfeo-blog-env/dati/` |
 | Password applicazione WordPress | Portachiavi (macOS) o Gestore credenziali (Windows), voce «Orfeo-WordPress» |
-| Pianificazione | `~/Library/LaunchAgents/blog.argosnewdreams.orfeo.plist` (macOS) o attività «Orfeo - bozza settimanale» (Windows) |
+| Pianificazione | `~/Library/LaunchAgents/blog.argosnewdreams.orfeoblog.plist` (macOS) o attività «Orfeo - bozza settimanale» (Windows) |
 
 ## 6. Aggiornamenti
 All'avvio Orfeo legge da GitHub solo il numero di versione. Se ce n'è una nuova propone **Aggiorna ora**: sostituisce i file del programma (una copia resta in `app_precedente/`) e si riavvia. Dati, cartella di lavoro e pianificazione restano.
 
 ## 7. Disinstallazione
 1. In *Pianifica* togli la spunta e premi **Salva la pianificazione**.
-2. Cancella `~/Applications/Orfeo.app` (Mac) o i collegamenti (Windows), poi la cartella `~/orfeo-env`.
+2. Cancella `~/Applications/Orfeo.app` (Mac) o i collegamenti (Windows), poi la cartella `~/orfeo-blog-env`.
 3. La cartella di lavoro e la voce nel portachiavi restano: cancellale a mano se non ti servono più.
 
 ## 8. Risoluzione dei problemi
@@ -76,7 +76,7 @@ All'avvio Orfeo legge da GitHub solo il numero di versione. Se ce n'è una nuova
 - **«Il modello … non è installato»**: scaricalo da *Impostazioni → Nuovo modello* e sceglilo.
 - **«Nessuna bozza (nessun-tema)»**: *In arrivo* è vuota e i feed sono spenti; aggiungi un appunto o attiva i feed in *Blog*.
 - **WordPress risponde 401 o 403**: controlla utente e password applicazione (non la password di accesso) con **Verifica collegamento**.
-- **La pianificazione non parte (Mac)**: in *Impostazioni di Sistema → Privacy e sicurezza → File e cartelle* controlla che Orfeo possa accedere a Documenti; guarda `~/orfeo-env/dati/log/launchd.log`.
+- **La pianificazione non parte (Mac)**: in *Impostazioni di Sistema → Privacy e sicurezza → File e cartelle* controlla che Orfeo possa accedere a Documenti; guarda `~/orfeo-blog-env/dati/log/launchd.log`.
 - **Tanti [VERIFY]**: è normale con un modello da 12B; gli appunti più ricchi e i link a fonti ufficiali li riducono.
 
 ## 9. Privacy

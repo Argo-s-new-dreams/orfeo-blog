@@ -72,7 +72,7 @@ Gli installer non sono firmati digitalmente: per questo Windows e macOS mostrano
   - **Novità dai feed**: legge i feed ufficiali (di serie Microsoft 365 Roadmap e arXiv cs.AI, cs.CL) quando *In arrivo* è vuota;
   - **WordPress**: legge i post pubblicati (per i link interni) e invia la **bozza** al tuo blog. Si autentica con una *password applicazione* salvata nel portachiavi del sistema (Portachiavi su macOS, Gestore credenziali su Windows).
 - Quando un accesso è acceso, il bollino in basso lo dichiara: «🔒 Modello locale · 🌐 in rete: …».
-- Impostazioni, storico e registri stanno in `~/orfeo-env/dati/`; appunti e bozze nella cartella di lavoro (di serie `~/Documents/Orfeo`). Gli aggiornamenti non li toccano.
+- Impostazioni, storico e registri stanno in `~/orfeo-blog-env/dati/`; appunti e bozze nella cartella di lavoro (di serie `~/Documents/Orfeo`). Gli aggiornamenti non li toccano.
 
 ### AI Act
 
@@ -111,7 +111,7 @@ Prima versione. Provata con un server Ollama e un WordPress simulati; da collaud
 
 ## Licenza
 
-MIT. Licenze di terze parti in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+MIT. Licenze di terze parti in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Repository: [Argo-s-new-dreams/orfeo-blog](https://github.com/Argo-s-new-dreams/orfeo-blog).
 
 ## English summary
 

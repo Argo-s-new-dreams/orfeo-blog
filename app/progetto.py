@@ -7,12 +7,12 @@ con `python strumenti/nuova_versione.py "titolo della novità"`, che aggiorna an
 import os
 from pathlib import Path
 
-VERSIONE = "20261115.1431"
+VERSIONE = "20261115.1434"
 
 # --- identità -------------------------------------------------------------------------------
 NOME = "Orfeo"                           # nome mostrato (finestra, menu Start, ~/Applications)
 SOTTOTITOLO = "L'agente editoriale di argosnewdreams.blog"
-SLUG = "orfeo"                           # minuscole e trattini: cartella dati, repo, file
+SLUG = "orfeo-blog"                      # minuscole e trattini: cartella dati, repo, file
 LETTERA_LOGO = "O"                       # lettera nel logo del menu laterale
 BUNDLE_ID = f"blog.argosnewdreams.{SLUG.replace('-', '')}"
 AUTORE = "Luca Borio"

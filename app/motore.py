@@ -194,7 +194,7 @@ class Esecuzione:
         elif not imp.get("usa_feed"):
             return {"esito": "nessun-tema", "problemi": self.problemi,
                     "messaggio": "In arrivo è vuota e le novità dai feed sono spente: aggiungi un appunto oppure "
-                                 "attiva «Novità della settimana» nella pagina Blog."}
+                                 "nella pagina Blog attiva la ricerca nelle novità dei feed ufficiali."}
         else:
             self.modo = "novità"
             self.appunti = ""
