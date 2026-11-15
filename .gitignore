@@ -1,0 +1,26 @@
+# Dati personali: non devono MAI finire nel repository
+dati/
+*.token
+.hf_token
+impostazioni.json
+*.npy
+.env
+
+# File di lavoro degli utenti (audio, video, documenti reali)
+*.wav
+*.mp3
+*.m4a
+*.mp4
+*.mov
+
+# Python e ambienti
+__pycache__/
+*.pyc
+.venv/
+venv/
+*-env/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.zip
