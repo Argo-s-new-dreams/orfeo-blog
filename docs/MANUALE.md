@@ -26,8 +26,14 @@ Installa [Ollama](https://ollama.com), poi in *Impostazioni → Nuovo modello* s
 ### Primo collegamento
 Nella pagina **Blog**:
 1. spunta **Cerca le fonti su Microsoft Learn e leggi i link ammessi** e premi **Prova Microsoft Learn**;
-2. spunta **Collega il blog**, inserisci utente e *password applicazione* (wp-admin → Utenti → Profilo → Password applicazione, non la password di accesso) e premi **Verifica collegamento**;
-3. premi **Salva**.
+2. spunta **Collega il blog** e scegli il metodo **WordPress.com (consigliato)**. Serve una sola volta registrare Orfeo come applicazione:
+   - apri <https://developer.wordpress.com/apps/> → **Create New Application**;
+   - *Name* `Orfeo`, *Website URL* l'indirizzo del blog, **Redirect URLs** `http://127.0.0.1:8765/orfeo`, *Type* **Native**; salva;
+   - copia **Client ID** e **Client Secret** nei campi della pagina Blog;
+3. premi **Collega con WordPress.com**: si apre il browser, approvi l'accesso al blog e torni in Orfeo. Se il browser mostra «pagina non raggiungibile», copia l'indirizzo dalla barra e usa **Incolla indirizzo di ritorno…**;
+4. premi **Verifica collegamento** e poi **Salva**.
+
+Il metodo **Password applicazione** (`/wp-json`) resta disponibile per i siti WordPress non ospitati su WordPress.com. Sui siti WordPress.com spesso non funziona: la *modalità difensiva* blocca i programmi e l'autenticazione con password applicazione può essere rifiutata (401).
 
 ## 3. Le funzioni
 
@@ -68,7 +74,7 @@ Scegli giorno e ora e premi **Salva la pianificazione**. A quell'ora Orfeo **con
 - **Cartella di lavoro** (di serie `~/Documents/Orfeo`): `in-arrivo`, `bozze`, `elaborati`, `config`. In `config/prompt-editoriale-v2-compact.md` va il tuo stile editoriale: prevale sullo stile di base, mai sulle regole di sicurezza.
 - **Scrittura**: lunghezza in parole, contesto in token, creatività.
 - **Fonti online** (spente di default): Microsoft Learn e link ammessi; numero di articoli della Knowledge Base per esecuzione.
-- **WordPress** (spento di default): sito, utente, password applicazione.
+- **WordPress** (spento di default): sito e metodo. *WordPress.com*: Client ID, Client Secret (nel portachiavi), indirizzo di ritorno, **Collega con WordPress.com**. *Password applicazione*: utente e password.
 
 ## 4. Le fonti ammesse
 | Livello | Fonti |
@@ -107,7 +113,9 @@ All'avvio Orfeo legge da GitHub solo il numero di versione. Se ce n'è una nuova
 - **«Microsoft Learn non raggiungibile»**: controlla la connessione; con **Prova Microsoft Learn** (pagina Blog) verifichi il collegamento.
 - **«… non offre più lo strumento microsoft_docs_search»**: Microsoft ha cambiato il server MCP; serve un aggiornamento di Orfeo.
 - **«L'articolo è stato modificato dopo il controllo»**: qualcuno l'ha cambiato in WordPress; **Scarta** la proposta e usa **Ricontrolla l'articolo selezionato**.
-- **WordPress risponde 401 o 403**: controlla utente e password applicazione con **Verifica collegamento**.
+- **WordPress risponde 401 o 403** con il metodo password applicazione: sui siti WordPress.com passa al metodo **WordPress.com**.
+- **«Collega con WordPress.com»** con errore *redirect_uri*: l'indirizzo di ritorno registrato su developer.wordpress.com deve essere identico a quello nella pagina Blog.
+- **Token scaduto o revocato**: premi di nuovo **Collega con WordPress.com**.
 - **«Nessun articolo (nessuna-bozza)»**: scrivi la bozza nella pagina Scrivi.
 - **La pianificazione non parte (Mac)**: in *Impostazioni di Sistema → Privacy e sicurezza → File e cartelle* controlla che Orfeo possa accedere a Documenti; guarda `~/orfeo-blog-env/dati/log/launchd.log`.
 - **Tanti «non verificabile»**: è normale per gli articoli su prodotti non Microsoft o con molte opinioni; il modello da 12B è prudente per costruzione.

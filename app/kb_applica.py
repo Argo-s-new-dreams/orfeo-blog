@@ -13,7 +13,6 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-import comune
 import dati
 import kb
 import wordpress as wp
@@ -26,19 +25,16 @@ class ErroreApplica(RuntimeError):
     pass
 
 
-def _credenziali():
-    imp = dati.carica_impostazioni()
-    utente = imp.get("wp_utente", "").strip()
-    pw = comune.leggi_password(utente)
-    if not (imp.get("wordpress_attivo") and utente and pw):
-        raise ErroreApplica("WordPress non è collegato: controlla la pagina Blog.")
-    return imp["wp_sito"], utente, pw
+def _connessione():
+    try:
+        return wp.connessione(dati.carica_impostazioni())
+    except wp.ErroreWP as e:
+        raise ErroreApplica(str(e)) from None
 
 
-def _scrivi(sito, utente, pw, pid, contenuto):
-    url = f"{wp._api(sito)}/knowledgebase/{int(pid)}?context=edit&_fields=id,modified_gmt,content"
-    h = dict(wp._auth(utente, pw), **{"Content-Type": "application/json"})
-    r = wp._chiama(url, json.dumps({"content": contenuto}).encode("utf-8"), h, "POST")
+def _scrivi(conn, pid, contenuto):
+    url = f"{conn.api}/knowledgebase/{int(pid)}?context=edit&_fields=id,modified_gmt,content"
+    r = wp._chiama(url, json.dumps({"content": contenuto}).encode("utf-8"), conn.h(json_=True), "POST")
     if (r.get("content") or {}).get("raw", contenuto).strip() != contenuto.strip():
         raise ErroreApplica("WordPress ha salvato un contenuto diverso da quello atteso: controlla l'articolo.")
     return r
@@ -54,13 +50,13 @@ def _backup(pid, raw, motivo):
 
 def applica(file_proposta):
     p = json.loads(Path(file_proposta).read_text("utf-8"))
-    sito, utente, pw = _credenziali()
-    attuale = wp.leggi_kb(sito, utente, pw, p["id"])
+    conn = _connessione()
+    attuale = wp.leggi_kb(conn, p["id"])
     if attuale["modified_gmt"] != p["modified_gmt"] or attuale["raw"] != p["raw_vecchio"]:
         raise ErroreApplica("L'articolo è stato modificato dopo il controllo: la proposta non è più valida. "
                             "Scartala e rifai il controllo di questo articolo.")
     copia = _backup(p["id"], attuale["raw"], f"prima di applicare {Path(file_proposta).name}")
-    _scrivi(sito, utente, pw, p["id"], p["raw_nuovo"])
+    _scrivi(conn, p["id"], p["raw_nuovo"])
     _archivia(file_proposta, "applicata")
     st = kb.carica_stato()
     s = st.get(str(p["id"]), {})
@@ -88,10 +84,10 @@ def ripristina(pid):
     if not copie:
         raise ErroreApplica("Non c'è una copia di sicurezza per questo articolo.")
     vecchio = json.loads(copie[-1].read_text("utf-8"))
-    sito, utente, pw = _credenziali()
-    attuale = wp.leggi_kb(sito, utente, pw, pid)
+    conn = _connessione()
+    attuale = wp.leggi_kb(conn, pid)
     _backup(pid, attuale["raw"], f"prima di ripristinare {copie[-1].name}")
-    _scrivi(sito, utente, pw, pid, vecchio["raw"])
+    _scrivi(conn, pid, vecchio["raw"])
     copie[-1].rename(copie[-1].with_suffix(".ripristinato"))
     st = kb.carica_stato()
     if str(pid) in st:

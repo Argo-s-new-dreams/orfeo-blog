@@ -81,6 +81,19 @@ def salva_password(utente, password):
     keyring.set_password(SERVIZIO_PASSWORD, (utente or "").strip().lstrip("@"), password)
 
 
+def leggi_segreto(servizio, nome):
+    try:
+        import keyring
+        return keyring.get_password(servizio, nome) or ""
+    except Exception:
+        return ""
+
+
+def salva_segreto(servizio, nome, valore):
+    import keyring
+    keyring.set_password(servizio, nome, valore)
+
+
 # ---------------------------------------------------------------- varie
 def slugify(testo, max_len=70):
     t = testo.lower()

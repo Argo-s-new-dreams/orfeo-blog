@@ -7,7 +7,7 @@ con `python strumenti/nuova_versione.py "titolo della novità"`, che aggiorna an
 import os
 from pathlib import Path
 
-VERSIONE = "20261115.1515"
+VERSIONE = "20261115.1542"
 
 # --- identità -------------------------------------------------------------------------------
 NOME = "Orfeo"                           # nome mostrato (finestra, menu Start, ~/Applications)
@@ -49,7 +49,11 @@ IMPOSTAZIONI_BASE = {
     "kb_per_esecuzione": 5,              # articoli della Knowledge Base controllati a ogni esecuzione
     "wordpress_attivo": False,           # legge post e KB, crea bozze; modifica la KB solo con «Applica»
     "wp_sito": "https://argosnewdreams.blog",
-    "wp_utente": "",                     # la password applicazione sta nel portachiavi del sistema, non qui
+    "wp_metodo": "wpcom",                # «wpcom»: API di WordPress.com con OAuth (consigliato) · «password»: /wp-json
+    "wpcom_client_id": "",               # app registrata su developer.wordpress.com/apps (il secret sta nel portachiavi)
+    "wpcom_redirect": "http://127.0.0.1:8765/orfeo",
+    "wpcom_blog_id": "",                 # restituito da WordPress.com al momento dell'autorizzazione
+    "wp_utente": "",                     # solo metodo «password»: la password applicazione sta nel portachiavi
     "pianificazione": {"attiva": False, "giorno": 1, "ora": 7, "minuto": 40},  # giorno: 0 = domenica
 }
 

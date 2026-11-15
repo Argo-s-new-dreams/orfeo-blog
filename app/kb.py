@@ -170,10 +170,7 @@ class Revisione:
         if not imp.get("fonti_online"):
             raise RuntimeError("Le fonti online sono spente: attivale nella pagina Blog (servono Microsoft Learn "
                                "e i siti istituzionali per verificare gli articoli).")
-        self.utente = imp.get("wp_utente", "").strip()
-        self.password = comune.leggi_password(self.utente)
-        if not (self.utente and self.password):
-            raise RuntimeError("Mancano utente o password applicazione di WordPress (pagina Blog).")
+        self.conn = wp.connessione(imp)
         if not imp.get("modello_chat"):
             raise RuntimeError("Nessun modello scelto: vai in Impostazioni → Modello linguistico locale.")
         if not llm.assicura_avviato(imp["ollama_url"], log=self.log):
@@ -196,7 +193,7 @@ class Revisione:
     def _esegui(self):
         self._controlli_iniziali()
         self.log("Leggo gli articoli della Knowledge Base…")
-        articoli = wp.elenco_kb(self.imp["wp_sito"], self.utente, self.password)
+        articoli = wp.elenco_kb(self.conn)
         self.log(f"Articoli pubblicati: {len(articoli)}")
         stato = carica_stato()
         in_attesa = {str(p["id"]) for p in proposte_aperte()}

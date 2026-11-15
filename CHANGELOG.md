@@ -2,6 +2,11 @@
 
 Le versioni hanno il formato `AAAAMMGG.HHMM` (ora di Roma). Il manuale completo è in [docs/MANUALE.md](docs/MANUALE.md).
 
+## 20261115.1542: Collegamento a WordPress.com con OAuth
+- Nuovo metodo consigliato «WordPress.com»: Orfeo usa l'API ufficiale public-api.wordpress.com e non viene più bloccato dalla modalità difensiva del sito
+- Registrazione una tantum su developer.wordpress.com/apps, poi «Collega con WordPress.com» dal browser; token e segreto solo nel portachiavi
+- La password applicazione resta disponibile per i siti WordPress non ospitati su WordPress.com
+
 ## 20261115.1515: WordPress: modalità difensiva riconosciuta
 - Se WordPress.com mostra la verifica anti-bot «Checking your browser…», Orfeo lo dice chiaramente e spiega come disattivarla, invece di dare la colpa alle credenziali
 - Il nome utente WordPress viene ripulito dalla «@» iniziale; la password già salvata resta valida

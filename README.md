@@ -65,7 +65,7 @@ Si scarica anche da *Impostazioni → Nuovo modello*. Con gemma3:12b su un Mac M
 2. **Avvia l'installer**
    - macOS: tasto destro su `Installa-Mac.command` → *Apri*. Se macOS lo blocca: *Impostazioni di Sistema → Privacy e sicurezza → Apri comunque*.
    - Windows: doppio clic su `Installa-Windows.bat`. Se compare SmartScreen: *Ulteriori informazioni → Esegui comunque*.
-3. **Apri Orfeo**: in *Impostazioni* scegli il modello; in *Blog* attiva le fonti online e WordPress (utente e *password applicazione*), poi **Prova Microsoft Learn** e **Verifica collegamento**.
+3. **Apri Orfeo**: in *Impostazioni* scegli il modello; in *Blog* attiva le fonti online e WordPress (metodo *WordPress.com*: registri una volta Orfeo su developer.wordpress.com/apps e premi **Collega con WordPress.com**; vedi il manuale), poi **Prova Microsoft Learn** e **Verifica collegamento**.
 4. Primo controllo da **Knowledge Base → Controlla ora**, prima bozza da **Scrivi**; poi attiva la **Pianificazione** (di serie lunedì alle 7:40). Su Mac rispondi «Consenti» se chiede l'accesso a Documenti.
 
 Gli installer non sono firmati digitalmente: per questo Windows e macOS mostrano un avviso. Il codice è tutto qui, leggibile.
@@ -77,7 +77,7 @@ Gli installer non sono firmati digitalmente: per questo Windows e macOS mostrano
 - Il modello gira sul computer: **bozze e articoli non vengono mai inviati a un servizio di AI.**
 - Di serie Orfeo **non va in rete** (a parte il controllo degli aggiornamenti su GitHub, disattivabile). Nella pagina *Blog* puoi accendere:
   - **Fonti online**: ricerche sul Microsoft Learn MCP Server (escono solo le parole cercate) e lettura delle pagine ammesse;
-  - **WordPress**: lettura di post e Knowledge Base, creazione di bozze, modifiche alla Knowledge Base solo con **Applica**. Autenticazione con una *password applicazione* nel portachiavi del sistema (Portachiavi su macOS, Gestore credenziali su Windows).
+  - **WordPress**: lettura di post e Knowledge Base, creazione di bozze, modifiche alla Knowledge Base solo con **Applica**. Autenticazione OAuth di WordPress.com tramite `public-api.wordpress.com` (oppure *password applicazione* per siti non WordPress.com); token e segreti solo nel portachiavi del sistema (Portachiavi su macOS, Gestore credenziali su Windows).
 - Il bollino in basso dichiara gli accessi attivi: «🔒 Modello locale · 🌐 in rete: …».
 - Impostazioni, storico, registri, proposte e copie di sicurezza stanno in `~/orfeo-blog-env/dati/`; bozze e articoli nella cartella di lavoro (di serie `~/Documents/Orfeo`). Gli aggiornamenti non li toccano.
 

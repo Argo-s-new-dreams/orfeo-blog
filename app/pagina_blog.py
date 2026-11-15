@@ -2,13 +2,18 @@
 
 Standard famiglia Argo: tutto ciò che va in rete è spento di default e si accende qui, in modo visibile.
 """
-from PySide6.QtWidgets import (QCheckBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGroupBox, QHBoxLayout,
-                               QLineEdit, QMessageBox, QPushButton, QSpinBox)
+from urllib.parse import urlparse
+
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGroupBox,
+                               QHBoxLayout, QInputDialog, QLineEdit, QMessageBox, QPushButton, QSpinBox, QWidget)
 
 import comune
 import dati
 import motore
 import wordpress as wp
+import wpcom_oauth
 from lavoro import Lavoro
 from ui_comune import aggiorna_bollino, nota
 from pagine import Pagina
@@ -80,25 +85,71 @@ class PaginaBlog(Pagina):
         self.k_wp = QCheckBox("Collega il blog: leggi post e Knowledge Base, crea gli articoli come bozze")
         self.k_wp.setChecked(bool(imp["wordpress_attivo"]))
         self.e_sito = QLineEdit(imp["wp_sito"])
+        self.c_metodo = QComboBox()
+        self.c_metodo.addItem("WordPress.com (OAuth) — consigliato per i siti ospitati su WordPress.com", "wpcom")
+        self.c_metodo.addItem("Password applicazione (REST API del sito)", "password")
+        self.c_metodo.setCurrentIndex(0 if imp.get("wp_metodo", "wpcom") == "wpcom" else 1)
+        f.addRow("", self.k_wp)
+        f.addRow("Sito", self.e_sito)
+        f.addRow("Metodo", self.c_metodo)
+
+        # --- WordPress.com OAuth
+        self.box_wpcom = QWidget()
+        fw = QFormLayout(self.box_wpcom)
+        fw.setContentsMargins(0, 0, 0, 0)
+        self.e_cid = QLineEdit(str(imp.get("wpcom_client_id", "")))
+        self.e_secret = QLineEdit()
+        self.e_secret.setEchoMode(QLineEdit.Password)
+        if imp.get("wpcom_client_id") and wpcom_oauth.leggi_secret(imp["wpcom_client_id"]):
+            self.e_secret.setPlaceholderText("già salvato nel portachiavi")
+        self.e_redirect = QLineEdit(imp.get("wpcom_redirect") or wpcom_oauth.REDIRECT_PREDEFINITO)
+        rw = QHBoxLayout()
+        self.b_collega = QPushButton("Collega con WordPress.com")
+        self.b_collega.clicked.connect(self._collega_wpcom)
+        self.b_incolla = QPushButton("Incolla indirizzo di ritorno…")
+        self.b_incolla.clicked.connect(self._incolla_ritorno)
+        rw.addWidget(self.b_collega)
+        rw.addWidget(self.b_incolla)
+        rw.addStretch(1)
+        self.l_wpcom = nota("")
+        fw.addRow("Client ID", self.e_cid)
+        fw.addRow("Client Secret", self.e_secret)
+        fw.addRow("Redirect URL", self.e_redirect)
+        fw.addRow("", rw)
+        fw.addRow("", self.l_wpcom)
+        fw.addRow("", nota("Una volta sola: su <b>developer.wordpress.com/apps</b> crea un'applicazione «Orfeo» con "
+                           "Redirect URL <code>http://127.0.0.1:8765/orfeo</code> e copia qui Client ID e Client Secret. "
+                           "Poi «Collega con WordPress.com»: si apre il browser, approvi l'accesso al blog e il token "
+                           "finisce nel portachiavi."))
+        f.addRow(self.box_wpcom)
+
+        # --- password applicazione
+        self.box_pw = QWidget()
+        fp = QFormLayout(self.box_pw)
+        fp.setContentsMargins(0, 0, 0, 0)
         self.e_utente = QLineEdit(imp["wp_utente"])
         self.e_pw = QLineEdit()
         self.e_pw.setEchoMode(QLineEdit.Password)
         if imp["wp_utente"] and comune.leggi_password(imp["wp_utente"]):
             self.e_pw.setPlaceholderText("già salvata nel portachiavi")
+        fp.addRow("Utente", self.e_utente)
+        fp.addRow("Password applicazione", self.e_pw)
+        fp.addRow("", nota("Crea la password del sito con wp-admin/authorize-application.php (non la password di "
+                           "accesso). Sui siti WordPress.com questa via può essere fermata dalla verifica anti-bot: in "
+                           "quel caso usa il metodo WordPress.com."))
+        f.addRow(self.box_pw)
+
         r = QHBoxLayout()
         self.b_wp = QPushButton("Verifica collegamento")
         self.b_wp.clicked.connect(self._verifica_wp)
         r.addWidget(self.b_wp)
         r.addStretch(1)
-        f.addRow("", self.k_wp)
-        f.addRow("Sito", self.e_sito)
-        f.addRow("Utente", self.e_utente)
-        f.addRow("Password applicazione", self.e_pw)
         f.addRow("", r)
-        f.addRow("", nota("Crea una <i>password applicazione</i> in wp-admin → Utenti → Profilo (non la password di "
-                          "accesso). Resta nel portachiavi del sistema, mai su file. Gli articoli nuovi diventano solo "
-                          "bozze; gli articoli della Knowledge Base cambiano solo quando premi «Applica»."))
+        f.addRow("", nota("Le credenziali restano nel portachiavi del sistema, mai su file. Gli articoli nuovi "
+                          "diventano solo bozze; gli articoli della Knowledge Base cambiano solo quando premi «Applica»."))
         lay.addWidget(g)
+        self.c_metodo.currentIndexChanged.connect(self._mostra_metodo)
+        self._mostra_metodo()
 
         r = QHBoxLayout()
         b = QPushButton("Salva")
@@ -114,15 +165,93 @@ class PaginaBlog(Pagina):
         if d:
             self.e_cart.setText(d)
 
-    def _verifica_wp(self):
-        sito, utente = self.e_sito.text().strip(), wp.pulisci_utente(self.e_utente.text())
-        pw = self.e_pw.text().strip() or comune.leggi_password(utente)
-        if not (utente and pw):
-            QMessageBox.information(self, "WordPress", "Inserisci utente e password applicazione.")
+    def _mostra_metodo(self):
+        wpcom = self.c_metodo.currentData() == "wpcom"
+        self.box_wpcom.setVisible(wpcom)
+        self.box_pw.setVisible(not wpcom)
+        imp = dati.carica_impostazioni()
+        if wpcom:
+            ok = imp.get("wpcom_blog_id") and wpcom_oauth.leggi_token(imp)
+            self.l_wpcom.setText(f"✅ Autorizzato (blog {imp['wpcom_blog_id']})." if ok else "Non ancora autorizzato.")
+
+    def _imp_dal_modulo(self):
+        """Impostazioni come sono scritte ora nel modulo (anche se non ancora salvate)."""
+        imp = dati.carica_impostazioni()
+        imp.update(wordpress_attivo=True, wp_sito=self.e_sito.text().strip().rstrip("/"),
+                   wp_metodo=self.c_metodo.currentData(), wpcom_client_id=self.e_cid.text().strip(),
+                   wpcom_redirect=self.e_redirect.text().strip(), wp_utente=wp.pulisci_utente(self.e_utente.text()))
+        return imp
+
+    def _salva_wpcom(self, dati_token=None):
+        imp = dati.carica_impostazioni()
+        imp.update(wp_metodo="wpcom", wpcom_client_id=self.e_cid.text().strip(),
+                   wpcom_redirect=self.e_redirect.text().strip(), wp_sito=self.e_sito.text().strip().rstrip("/"))
+        if dati_token:
+            imp["wpcom_blog_id"] = str(dati_token.get("blog_id", ""))
+        dati.salva_impostazioni(imp)
+        self.e_secret.clear()
+        self.e_secret.setPlaceholderText("già salvato nel portachiavi")
+        self._mostra_metodo()
+
+    def _dati_app(self):
+        cid = self.e_cid.text().strip()
+        secret = self.e_secret.text().strip() or wpcom_oauth.leggi_secret(cid)
+        if not (cid and secret):
+            QMessageBox.information(self, "WordPress.com", "Inserisci Client ID e Client Secret dell'app registrata "
+                                    "su developer.wordpress.com/apps.")
+            return None
+        blog = urlparse(self.e_sito.text().strip()).hostname or self.e_sito.text().strip()
+        return cid, secret, blog, self.e_redirect.text().strip()
+
+    def _collega_wpcom(self):
+        app = self._dati_app()
+        if not app:
             return
-        lav = Lavoro(lambda _l: wp.verifica(sito, utente, pw), self)
+        cid, secret, blog, redirect = app
+        lav = Lavoro(lambda l: wpcom_oauth.autorizza(cid, secret, blog, redirect, stop=l.fermato), self)
+        lav.sig_fatto.connect(lambda d: (self.b_collega.setEnabled(True), self._salva_wpcom(d), QMessageBox.information(
+            self, "WordPress.com", f"Autorizzato per {d.get('blog_url', blog)}. Ora premi «Verifica collegamento».")))
+        lav.sig_errore.connect(lambda e: (self.b_collega.setEnabled(True), QMessageBox.warning(self, "WordPress.com", e)))
+        self.b_collega.setEnabled(False)
+        self.l_wpcom.setText("Si è aperto il browser: approva l'accesso di Orfeo al blog, poi torna qui…")
+        self.tieni(lav).start()
+
+    def _incolla_ritorno(self):
+        """Alternativa se WordPress.com non accetta un Redirect URL locale: si incolla l'indirizzo di ritorno."""
+        app = self._dati_app()
+        if not app:
+            return
+        cid, secret, blog, redirect = app
+        import secrets as _s
+        state = _s.token_urlsafe(12)
+        url = wpcom_oauth.url_autorizzazione(cid, redirect, blog, state)
+        QDesktopServices.openUrl(QUrl(url))
+        testo, ok = QInputDialog.getText(self, "Indirizzo di ritorno",
+                                         "Si è aperto il browser. Dopo aver approvato, copia qui l'indirizzo completo "
+                                         "della pagina su cui arrivi (contiene «code=»):")
+        if not ok or not testo.strip():
+            return
+        try:
+            codice = wpcom_oauth.codice_da_url(testo, state)
+            d = wpcom_oauth.scambia_codice(cid, secret, redirect, codice)
+            wpcom_oauth.salva(cid, secret, d)
+            self._salva_wpcom(d)
+            QMessageBox.information(self, "WordPress.com", "Autorizzato. Ora premi «Verifica collegamento».")
+        except Exception as e:
+            QMessageBox.warning(self, "WordPress.com", str(e))
+
+    def _verifica_wp(self):
+        imp = self._imp_dal_modulo()
+        if imp["wp_metodo"] == "password" and self.e_pw.text().strip():
+            comune.salva_password(imp["wp_utente"], self.e_pw.text().strip())
+        try:
+            conn = wp.connessione(imp)
+        except wp.ErroreWP as e:
+            QMessageBox.information(self, "WordPress", str(e))
+            return
+        lav = Lavoro(lambda _l: wp.verifica(conn), self)
         lav.sig_fatto.connect(lambda nome: (self.b_wp.setEnabled(True), QMessageBox.information(
-            self, "WordPress", f"Collegamento riuscito: utente «{nome}». Ricordati di premere Salva.")))
+            self, "WordPress", f"Collegamento riuscito ({conn.descrizione}): utente «{nome}». Ricordati di premere Salva.")))
         lav.sig_errore.connect(lambda e: (self.b_wp.setEnabled(True), QMessageBox.warning(self, "WordPress", e)))
         self.b_wp.setEnabled(False)
         self.tieni(lav).start()
@@ -143,9 +272,15 @@ class PaginaBlog(Pagina):
         self.e_utente.setText(utente)
         imp.update(cartella=self.e_cart.text().strip(), parole=self.s_parole.value(), contesto=self.s_ctx.value(),
                    temperatura=round(self.s_temp.value(), 2), fonti_online=self.k_fonti.isChecked(),
-                   kb_per_esecuzione=self.s_kb.value(), wordpress_attivo=self.k_wp.isChecked(), wp_sito=self.e_sito.text().strip().rstrip("/"),
-                   wp_utente=utente)
+                   kb_per_esecuzione=self.s_kb.value(), wordpress_attivo=self.k_wp.isChecked(),
+                   wp_sito=self.e_sito.text().strip().rstrip("/"), wp_utente=utente,
+                   wp_metodo=self.c_metodo.currentData(), wpcom_client_id=self.e_cid.text().strip(),
+                   wpcom_redirect=self.e_redirect.text().strip())
         try:
+            if self.e_secret.text().strip() and self.e_cid.text().strip():
+                comune.salva_segreto(wpcom_oauth.SERVIZIO, f"secret-{self.e_cid.text().strip()}", self.e_secret.text().strip())
+                self.e_secret.clear()
+                self.e_secret.setPlaceholderText("già salvato nel portachiavi")
             if self.e_pw.text().strip():
                 comune.salva_password(utente, self.e_pw.text().strip())
                 self.e_pw.clear()

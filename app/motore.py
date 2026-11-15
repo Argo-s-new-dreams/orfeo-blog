@@ -165,9 +165,8 @@ class Esecuzione:
         # 3. post già pubblicati (anti-duplicato e link interni)
         self.post = []
         try:
-            if not imp.get("wordpress_attivo"):
-                raise RuntimeError("collegamento al blog spento nelle impostazioni")
-            self.post = wp.post_pubblicati(imp["wp_sito"], 30)
+            self.conn = wp.connessione(imp)
+            self.post = wp.post_pubblicati(self.conn, 30)
             self.log(f"Post pubblicati letti: {len(self.post)}")
         except Exception as e:
             self.post = []
@@ -218,19 +217,14 @@ class Esecuzione:
         if self.crea_su_wordpress and not imp.get("wordpress_attivo"):
             self.problemi.append("Collegamento a WordPress spento (pagina Blog): bozza salvata solo sul computer")
         if self.crea_su_wordpress and imp.get("wordpress_attivo"):
-            utente = imp.get("wp_utente", "").strip()
-            password = comune.leggi_password(utente) if utente else ""
-            if not (utente and password):
-                self.problemi.append("Credenziali WordPress non impostate: bozza salvata solo sul computer")
-            else:
-                try:
-                    info_wp = wp.crea_bozza(imp["wp_sito"], utente, password, piano["titolo"], html,
-                                            estratto=" ".join(piano["tldr"][:2])[:300], slug=slug,
-                                            descrizione_seo=piano.get("descrizione_seo", ""))
-                    self.log(f"Bozza creata su WordPress: post {info_wp['id']}")
-                except Exception as e:
-                    self.problemi.append(f"Bozza non creata su WordPress: {e}")
-                    self.log(f"WordPress: {e}")
+            try:
+                info_wp = wp.crea_bozza(wp.connessione(imp), piano["titolo"], html,
+                                        estratto=" ".join(piano["tldr"][:2])[:300], slug=slug,
+                                        descrizione_seo=piano.get("descrizione_seo", ""))
+                self.log(f"Bozza creata su WordPress: post {info_wp['id']}")
+            except Exception as e:
+                self.problemi.append(f"Bozza non creata su WordPress: {e}")
+                self.log(f"WordPress: {e}")
 
         # 9. archivio locale
         base = f"{self.inizio:%Y-%m-%d}-{slug}"
