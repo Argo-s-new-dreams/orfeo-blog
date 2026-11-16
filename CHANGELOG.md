@@ -2,6 +2,12 @@
 
 Le versioni hanno il formato `AAAAMMGG.HHMM` (ora di Roma). Il manuale completo è in [docs/MANUALE.md](docs/MANUALE.md).
 
+## 20261116.1155: Standard Argo con canali Lab e Pro, controllo KB più mirato
+- Impostazioni → Aggiornamenti: canale Lab (ogni novità) o Pro (solo release verificate con firma e SHA-256, librerie a versione fissa); l'IT può bloccarlo con criteri.json
+- Knowledge Base: salta le sezioni Riferimenti, Fonti e Link interni, scarta doppioni e titoli di documenti
+- Knowledge Base: le affermazioni su prodotti non Microsoft finiscono «fuori perimetro» senza ricerche inutili
+- Knowledge Base: gli articoli lunghi si controllano a parti, una per giro, invece di fermarsi alla prima
+
 ## 20261115.1554: Avanzamento visibile nel controllo della Knowledge Base
 - Barra di avanzamento, fase corrente e tempo trascorso sotto la tabella
 - Registro dettagliato: affermazioni trovate, ricerche su Microsoft Learn, fonti ammesse ed esito di ogni verifica

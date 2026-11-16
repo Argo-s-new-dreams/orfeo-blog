@@ -1,6 +1,7 @@
 """verifica.py - controlli prima di pubblicare una nuova versione. Uso: python strumenti/verifica.py
 
 Controlla: formato della versione, voce nel CHANGELOG, file obbligatori, identità compilata,
+requisiti.lock allineato a requisiti.txt (canale Pro),
 assenza di dati personali nel repository, sintassi dei file Python, a capo corretti negli installer.
 Esce con codice 1 se qualcosa non va.
 """
@@ -15,7 +16,8 @@ APP = RADICE / "app"
 OBBLIGATORI = ["README.md", "CHANGELOG.md", "LICENSE", "THIRD_PARTY_LICENSES.md", "CLAUDE.md", ".gitignore",
                ".gitattributes", "Installa-Mac.command", "Installa-Windows.bat", "installer/installa_windows.ps1",
                "docs/MANUALE.md", "app/progetto.py", "app/main.py", "app/requisiti.txt", "app/icon.png",
-               "app/icon.ico", "app/icon.iconset/icon_512x512@2x.png"]
+               "app/icon.ico", "app/icon.iconset/icon_512x512@2x.png", "app/criteri.py", "app/requisiti.lock",
+               ".github/workflows/rilascio-pro.yml"]
 VIETATI = re.compile(r"(\.hf_token|impostazioni\.json|\.env$|token|secret|\.npy$|/dati/)", re.I)
 
 problemi = []
@@ -37,6 +39,18 @@ for f in OBBLIGATORI:
 slug = re.search(r'^SLUG = "([^"]*)"', prog, re.M).group(1)
 controlla(re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", slug), f"SLUG non valido: {slug}")
 controlla(slug != "nuova-app-ai" or "--modello" in sys.argv, "progetto.py ha ancora l'identità del modello")
+def _pacchetto(riga):
+    return re.split(r"[<>=!~;\[ ]", riga.strip(), maxsplit=1)[0].lower().replace("_", "-")
+
+
+if (APP / "requisiti.lock").exists():
+    bloccati = {_pacchetto(r) for r in (APP / "requisiti.lock").read_text(encoding="utf-8").splitlines()
+                if r and not r[0].isspace() and not r.startswith("#")}
+    richiesti = {_pacchetto(r) for r in (APP / "requisiti.txt").read_text(encoding="utf-8").splitlines()
+                 if r.strip() and not r.startswith("#")}
+    mancanti = sorted(richiesti - bloccati)
+    controlla(not mancanti, f"requisiti.lock non aggiornato (mancano {', '.join(mancanti)}): "
+                            "python strumenti/blocca_librerie.py")
 for py in APP.rglob("*.py"):
     try:
         py_compile.compile(str(py), doraise=True)

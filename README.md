@@ -16,7 +16,7 @@ Fa parte della famiglia [Argo](https://github.com/Argo-s-new-dreams/argo-ai): st
 | **Storico** | Articoli sviluppati e controlli della Knowledge Base, con registro di ogni esecuzione | Locale |
 | **Pianifica** | Ogni settimana: controllo della Knowledge Base e notifica che ti chiede la bozza del prossimo articolo | launchd (macOS), Utilità di pianificazione (Windows) |
 | **Blog** | Cartella di lavoro, lunghezza e stile; accessi in rete **facoltativi** (fonti online, WordPress) | — |
-| **Impostazioni** | Tema, modello Ollama, aggiornamenti | — |
+| **Impostazioni** | Tema, modello Ollama, aggiornamenti con canale **Lab** (ogni novità) o **Pro** (solo release verificate con firma Ed25519 e SHA-256, librerie a versione fissa; l'IT può bloccarlo con `criteri.json`) | — |
 
 | Scrivi | Storico | Blog |
 | --- | --- | --- |
@@ -107,9 +107,12 @@ app/
   learn_mcp.py           client del Microsoft Learn MCP Server (SDK MCP ufficiale)
   wordpress.py           lettura di post e Knowledge Base, creazione di bozze
   ingressi.py, gutenberg.py, pianificazione.py, comune.py, ui_comune.py
-  tema.py, pagine.py, lavoro.py, dati.py, llm_locale.py, aggiornamenti.py   standard famiglia Argo
+  tema.py, pagine.py, lavoro.py, dati.py, llm_locale.py   standard famiglia Argo
+  aggiornamenti.py, criteri.py   aggiornamenti Lab/Pro e criteri dell'IT (standard)
+  requisiti.txt, requisiti.lock  librerie; il lock con hash serve al canale Pro
 docs/                    manuale e screenshot
-strumenti/               versione, icone, verifica pre-pubblicazione
+strumenti/               versione, icone, verifica, librerie, chiavi, rilascio, promozione a Pro
+.github/workflows/       «Rilascio Pro»: release firmata a ogni tag v*
 ```
 
 ## Stato del progetto

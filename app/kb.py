@@ -101,6 +101,46 @@ def segmenti(raw):
     return out
 
 
+# Sezioni che non contengono affermazioni da verificare: elenchi di fonti, link interni, note di trasparenza.
+# Il modello tende a scambiare i titoli dei documenti citati per «affermazioni», e ogni falso allarme costa minuti.
+# Solo titoli che sono SOLO questo: «Fonti di conoscenza in Copilot Studio» resta da controllare.
+SEZIONI_ESCLUSE = re.compile(r"^\W*(riferimenti( bibliografici)?|fonti( e riferimenti)?|bibliografia|"
+                             r"link interni( argos)?|letture consigliate|trasparenza\b.*|references|sources)\W*$", re.I)
+LIMITE_PARTE = 12000  # caratteri di testo per ogni richiesta al modello (contesto da 16k token)
+
+
+def segmenti_da_controllare(segs):
+    """Tutti i segmenti tranne quelli sotto un titolo di sezione «Riferimenti», «Fonti», «Link interni»…"""
+    out, saltando = [], False
+    for s in segs:
+        if s["tag"].startswith("h"):
+            saltando = bool(SEZIONI_ESCLUSE.search(s["testo"]))
+            if saltando:
+                continue
+        if not saltando:
+            out.append(s)
+    return out
+
+
+def parti(segs, limite=LIMITE_PARTE):
+    """Divide un articolo lungo in parti: ogni giro ne controlla una, a rotazione."""
+    gruppi, attuale, n = [], [], 0
+    for s in segs:
+        riga = len(s["testo"]) + 8
+        if attuale and n + riga > limite:
+            gruppi.append(attuale)
+            attuale, n = [], 0
+        attuale.append(s)
+        n += riga
+    if attuale:
+        gruppi.append(attuale)
+    return gruppi or [[]]
+
+
+def _chiave(t):
+    return re.sub(r"\W+", " ", str(t).lower()).strip()
+
+
 def _inner_nuovo(vecchio_inner, testo_nuovo):
     """Testo semplice → HTML del segmento. **grassetto** diventa <strong>; se tutto il segmento era in grassetto
     lo resta. I link non si toccano: se il segmento ne conteneva, la proposta lo segnala (vedi _ha_link)."""
@@ -216,7 +256,9 @@ class Revisione:
             def priorita(a):
                 s = stato.get(str(a["id"]), {})
                 cambiato = s.get("impronta") != impronta(a["raw"])
-                return (0 if not s else 1 if cambiato else 2, s.get("ultimo_controllo", ""))
+                # 1 = da finire: modificato dopo il controllo o articolo lungo con parti ancora da vedere
+                da_finire = cambiato or s.get("parte_successiva", 0) > 0
+                return (0 if not s else 1 if da_finire else 2, s.get("ultimo_controllo", ""))
             scelti = sorted((a for a in articoli if str(a["id"]) not in in_attesa), key=priorita)[:self.quanti]
         n_prop = 0
         self._tot = max(1, len(scelti))
@@ -226,7 +268,7 @@ class Revisione:
             self.log(f"── [{i}/{len(scelti)}] {a['titolo']}")
             self.prog(0, f"Articolo {i} di {len(scelti)}: {a['titolo']}")
             try:
-                esito = self._revisiona(a)
+                esito = self._revisiona(a, stato.get(str(a["id"]), {}))
             except (Interrotto, KeyboardInterrupt):
                 raise
             except Exception as e:
@@ -244,17 +286,27 @@ class Revisione:
                 "titolo": f"Knowledge Base: {_n(len(scelti), 'articolo controllato', 'articoli controllati')}, "
                           f"{n_prop} da aggiornare"}
 
-    def _revisiona(self, a):
+    def _revisiona(self, a, prec=None):
+        prec = prec or {}
         segs = segmenti(a["raw"])
         per_id = {s["id"]: s for s in segs}
-        testo = "\n".join(f"[{s['id']}] {s['testo']}" for s in segs)
+        da_vedere = segmenti_da_controllare(segs)
+        gruppi = parti(da_vedere)
+        # stessa versione dell'articolo: si riprende dalla parte successiva; se è cambiato si ricomincia
+        n_parte = prec.get("parte_successiva", 0) if prec.get("impronta") == impronta(a["raw"]) else 0
+        n_parte = n_parte if n_parte < len(gruppi) else 0
+        gruppo = gruppi[n_parte]
+        succ = (n_parte + 1) % len(gruppi)
+        extra = {"parte_successiva": succ, "parti": len(gruppi)}
+        testo = "\n".join(f"[{s['id']}] {s['testo']}" for s in gruppo)
         if len(testo) < 200:
-            return {"esito": "non_verificabile", "messaggio": "articolo troppo breve"}
-        if len(testo) > 14000:
-            testo = testo[:14000]
-            self.problemi.append(f"{a['titolo']}: articolo lungo, controllata solo la prima parte")
-        self.log(f"  {len(segs)} paragrafi · chiedo al modello quali affermazioni possono essere superate "
-                 f"(con un modello da 12B può servire qualche minuto)…")
+            return {"esito": "non_verificabile", "messaggio": "articolo troppo breve", **extra}
+        esclusi = len(segs) - len(da_vedere)
+        self.log(f"  {len(segs)} paragrafi" + (f" ({esclusi} di riferimenti e note esclusi)" if esclusi else "")
+                 + (f" · articolo lungo: controllo la parte {n_parte + 1} di {len(gruppi)}, le altre nei prossimi giri"
+                    if len(gruppi) > 1 else ""))
+        self.log("  chiedo al modello quali affermazioni possono essere superate "
+                 "(con un modello da 12B può servire qualche minuto)…")
         self.prog(0.02, f"{a['titolo']}: individuo le affermazioni da verificare")
         r = self._chat_json(f"""ARTICOLO: {a['titolo']}
 {testo}
@@ -262,12 +314,34 @@ class Revisione:
 Elenca fino a 6 affermazioni di questo articolo che possono essere diventate superate col tempo:
 prezzi, licenze, nomi di prodotti o funzioni, limiti e quote, ruoli amministrativi, procedure e menu,
 stato (anteprima o disponibile), date, norme e scadenze. Ignora opinioni, esempi, prompt e racconti personali.
-Per ognuna indica il segmento [T#] che la contiene e una ricerca in inglese per Microsoft Learn.
-Rispondi solo con JSON: {{"affermazioni": [{{"segmento": "T5", "affermazione": "...", "ricerca": "..."}}]}}""")
-        aff = [x for x in r.get("affermazioni", []) if isinstance(x, dict) and x.get("segmento") in per_id][:6]
-        self.log(f"  affermazioni da verificare: {len(aff)}")
+Ogni affermazione deve essere una frase con un fatto verificabile: NON un titolo, NON il nome di un documento,
+di uno studio o di una fonte citata. Non ripetere la stessa affermazione.
+Per ognuna indica il segmento [T#], una ricerca in inglese per Microsoft Learn e l'ambito:
+"microsoft" (prodotti e servizi Microsoft), "norma" (leggi, regolamenti, enti pubblici) oppure
+"altro" (prodotti di altri fornitori, studi di mercato, tutto il resto).
+Rispondi solo con JSON: {{"affermazioni": [{{"segmento": "T5", "affermazione": "...", "ricerca": "...", "ambito": "microsoft"}}]}}""")
+        aff, visti, fuori = [], set(), []
+        for x in r.get("affermazioni", []):
+            if not isinstance(x, dict) or x.get("segmento") not in per_id:
+                continue
+            k = _chiave(x.get("affermazione", ""))
+            if not k or k in visti or len(k.split()) < 3:
+                continue  # doppioni e «affermazioni» di una o due parole (di solito titoli)
+            visti.add(k)
+            if str(x.get("ambito", "")).strip().lower() == "altro":
+                fuori.append(x)
+            else:
+                aff.append(x)
+        aff = aff[:6]
+        self.log(f"  affermazioni da verificare: {len(aff)}"
+                 + (f" · {len(fuori)} fuori perimetro (non Microsoft né norme: le fonti ammesse non le coprono)"
+                    if fuori else ""))
+        for x in fuori[:6]:
+            self.log(f"   – fuori perimetro: «{str(x.get('affermazione', ''))[:100]}»")
         if not aff:
-            return {"esito": "non_verificabile", "messaggio": "nessuna affermazione verificabile"}
+            return {"esito": "non_verificabile",
+                    "messaggio": "affermazioni fuori dal perimetro delle fonti ammesse" if fuori
+                    else "nessuna affermazione verificabile", **extra}
 
         # fonti dell'articolo stesso (solo se ammesse), una volta per articolo
         da_articolo = []
@@ -285,14 +359,16 @@ Rispondi solo con JSON: {{"affermazioni": [{{"segmento": "T5", "affermazione": "
 
         for k, x in enumerate(aff, 1):
             self.log(f"   {k}. «{str(x.get('affermazione', ''))[:110]}»")
-        controlli, modifiche, usati = [], [], set()
+        controlli, modifiche, usati, cache = [], [], set(), {}
         for k, x in enumerate(aff, 1):
             self._ferma_se_serve()
             ricerca = str(x.get("ricerca") or x.get("affermazione"))
             self.prog(0.15 + 0.85 * (k - 1) / len(aff), f"{a['titolo']}: affermazione {k} di {len(aff)}, cerco le fonti")
             self.log(f"  [{k}/{len(aff)}] cerco su Microsoft Learn: «{ricerca[:90]}»")
             try:
-                trovate = learn_mcp.cerca(ricerca, 3)
+                if _chiave(ricerca) not in cache:  # stessa ricerca, stesse fonti: niente richiesta doppia
+                    cache[_chiave(ricerca)] = learn_mcp.cerca(ricerca, 3)
+                trovate = list(cache[_chiave(ricerca)])
             except learn_mcp.ErroreLearn as e:
                 self.problemi.append(str(e))
                 self.log(f"     Microsoft Learn non risponde: {e}")
@@ -313,7 +389,7 @@ Rispondi solo con JSON: {{"affermazioni": [{{"segmento": "T5", "affermazione": "
                  f"non verificabili {conta['non_verificabile']}")
         esito = {"esito": "da_aggiornare" if modifiche else ("aggiornato" if conta["confermata"] else "non_verificabile"),
                  "confermate": conta["confermata"], "superate": conta["superata"],
-                 "non_verificabili": conta["non_verificabile"], "proposta": ""}
+                 "non_verificabili": conta["non_verificabile"], "proposta": "", **extra}
         if modifiche:
             quando = datetime.now()
             nuovo = applica_modifiche(a["raw"], per_id, modifiche, blocco_nota(modifiche, quando))

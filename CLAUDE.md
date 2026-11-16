@@ -18,7 +18,11 @@ Questo repository segue lo standard nato con **Argo · Cassetta degli attrezzi A
 | `app/pagina_*.py` | Una pagina per funzione (vedi `pagina_assistente.py`) | Sì: qui sta la logica dell'app |
 | `app/pagine.py` | Base comune delle pagine | No |
 | `app/tema.py` | Tema «Studio» scuro/chiaro, icone, menu laterale | Solo per aggiungere icone in `ICONE` |
-| `app/aggiornamenti.py` | Controllo e installazione aggiornamenti da GitHub | No |
+| `app/aggiornamenti.py` | Aggiornamenti da GitHub, canali Lab e Pro, verifica firma e SHA-256 | No |
+| `app/criteri.py` | Criteri aziendali (`criteri.json` di sistema impostato dall'IT) | No |
+| `app/requisiti.lock` | Librerie a versione fissa con hash, per il canale Pro | Rigenera con `strumenti/blocca_librerie.py` |
+| `app/chiave_aggiornamenti.pub` | Chiave pubblica che verifica le release Pro | Crea con `strumenti/genera_chiavi.py`, una volta per app |
+| `.github/workflows/rilascio-pro.yml` | Pubblica la release Pro a ogni tag `v*` | No |
 | `app/llm_locale.py` | Client Ollama: chat in streaming, embedding, download modelli | No (estendilo solo se serve) |
 | `app/lavoro.py` | Thread per le operazioni lunghe | No |
 | `app/dati.py` | Impostazioni dell'utente (scrittura atomica) | No |
@@ -26,7 +30,7 @@ Questo repository segue lo standard nato con **Argo · Cassetta degli attrezzi A
 | `app/icon.*` | Icone PNG, ICO e iconset macOS | Rigenera con `strumenti/crea_icone.py` |
 | `app/esempi/` | File **fittizi** per provare subito l'app | Sì |
 | `Installa-Mac.command`, `Installa-Windows.bat`, `installer/` | Installer standard | No |
-| `strumenti/` | Versione, icone, verifica pre-pubblicazione | No |
+| `strumenti/` | Versione, icone, verifica, librerie, chiavi, rilascio, promozione a Pro | No |
 | `docs/MANUALE.md`, `docs/screenshot-*.png` | Manuale e immagini | Sì |
 
 ## 3. Interfaccia (UX «Studio»)
@@ -44,8 +48,21 @@ Questo repository segue lo standard nato con **Argo · Cassetta degli attrezzi A
 - Formato versione: `AAAAMMGG.HHMM`, ora di Roma, in `app/progetto.py` → `VERSIONE`.
 - **A ogni modifica pubblicata**: `python strumenti/nuova_versione.py "Titolo" "punto 1" "punto 2"`. Aggiorna la versione e apre la voce `## AAAAMMGG.HHMM: Titolo` in cima al `CHANGELOG.md`, che l'app mostra all'utente come «novità».
 - L'app legge `app/progetto.py` e `CHANGELOG.md` dal ramo `main` su GitHub; se la versione è più alta propone **Aggiorna ora**: scarica lo zip, salva una copia in `app_precedente/`, sostituisce `app/`, reinstalla le librerie con `uv` solo se `requisiti.txt` è cambiato, poi si riavvia (su Mac con `open -n` sul bundle).
-- Conseguenza: **ciò che va su `main` arriva agli utenti**. Prova prima in locale; per esperimenti usa un altro ramo.
+- Conseguenza: **ciò che va su `main` arriva agli utenti del canale Lab**. Prova prima in locale; per esperimenti usa un altro ramo.
 - Se una correzione riguarda il codice di aggiornamento stesso, scrivilo nel CHANGELOG: vale dall'aggiornamento successivo.
+
+### Canali Lab e Pro
+| | Lab | Pro |
+| --- | --- | --- |
+| Sorgente | ramo `main` | solo GitHub Releases, tag `vAAAAMMGG.HHMM` |
+| Verifica | nessuna | firma Ed25519 del manifesto + SHA-256 del pacchetto |
+| Librerie | `requisiti.txt` | `requisiti.lock` con `--require-hashes` |
+| Governo IT | — | `criteri.json` può bloccare il canale o gli aggiornamenti |
+
+- Canale proposto all'installazione: `CANALE_PREDEFINITO` in `progetto.py` (`"pro"` per app date a clienti).
+- **Promozione a Pro = decisione di Luca, mai automatica.** Prima `python strumenti/passa_a_pro.py --controlla`, poi si chiede conferma esplicita mostrando versione e novità; solo dopo il sì `python strumenti/passa_a_pro.py --si`. Il push del tag avvia la GitHub Action che prova, firma e pubblica.
+- Se cambia `requisiti.txt`: `python strumenti/blocca_librerie.py` (con `freeze.txt` dell'ambiente collaudato, se disponibile), altrimenti `verifica.py` e `passa_a_pro.py` si fermano.
+- Prima release Pro di un'app nuova (una volta): `strumenti/genera_chiavi.py` sul Mac, segreto `ARGO_FIRMA_PRIVATA` nel repo con `gh secret set`, commit di `app/chiave_aggiornamenti.pub`. La chiave privata va nel Portachiavi, mai nel repository.
 
 ## 5. Installer
 
@@ -71,9 +88,10 @@ Questo repository segue lo standard nato con **Argo · Cassetta degli attrezzi A
 ## 8. Pubblicazione (ogni volta)
 
 1. `python strumenti/verifica.py` deve dire ✅.
-2. Commit con messaggio chiaro, push su `main` del repository GitHub.
+2. Commit con messaggio chiaro, push su `main` del repository GitHub (arriva al canale Lab).
 3. Copia della stessa versione nella cartella SharePoint AIFirst **Local AI** (sincronizzata via OneDrive sul Mac): GitHub e SharePoint devono restare allineati.
 4. Se la novità è rilevante: screenshot aggiornati in `docs/` e, se serve, bozza di articolo per argosnewdreams.blog.
+5. **Chiedi a Luca se la versione va passata a Pro** (vedi §4, «Canali Lab e Pro»). Se sì: `passa_a_pro.py --controlla`, conferma, `passa_a_pro.py --si`, poi verifica che la release abbia pacchetto, manifesto e firma.
 
 ## 9. Da non fare
 
@@ -81,3 +99,5 @@ Questo repository segue lo standard nato con **Argo · Cassetta degli attrezzi A
 - Salvare dati dell'utente dentro `app/` (verrebbero cancellati dall'aggiornamento).
 - Cambiare struttura, nomi dei file standard, formato della versione o tema per una singola app.
 - Aggiungere funzioni vietate dall'AI Act (art. 5), come il riconoscimento delle emozioni sul luogo di lavoro.
+- Creare tag `v*` o passare versioni a Pro senza la conferma esplicita di Luca.
+- Mettere chiavi private o segreti nel repository.

@@ -1,0 +1,42 @@
+# Rilascio Pro: a ogni tag vAAAAMMGG.HHMM pubblica una GitHub Release con pacchetto, manifesto e firma.
+# Il canale Pro di Argo installa solo da qui; il canale Lab continua a seguire il ramo main.
+name: Rilascio Pro
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  rilascio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Controllo della sintassi
+        run: python -m compileall -q app strumenti
+
+      - name: Prova della verifica degli aggiornamenti
+        run: |
+          pip install --quiet cryptography
+          python strumenti/prova_aggiornamenti.py
+
+      - name: Prepara pacchetto, manifesto e firma
+        env:
+          ARGO_FIRMA_PRIVATA: ${{ secrets.ARGO_FIRMA_PRIVATA }}
+        run: python strumenti/prepara_rilascio.py "$GITHUB_REF_NAME" dist "$RUNNER_TEMP/note.md"
+
+      - name: Pubblica la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$(python strumenti/identita.py) Pro ${GITHUB_REF_NAME#v}" \
+            --notes-file "$RUNNER_TEMP/note.md" \
+            --verify-tag

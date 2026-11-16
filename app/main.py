@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 import aggiornamenti
+import criteri
 import dati
 import llm_locale as llm
 import progetto as P
@@ -90,11 +91,30 @@ class PaginaImpostazioni(Pagina):
 
         g_agg = QGroupBox(f"Aggiornamenti · versione installata {P.VERSIONE}")
         v = QVBoxLayout(g_agg)
+        crit = criteri.carica()
+        r_can = QHBoxLayout()
+        r_can.addWidget(QLabel("Canale:"))
+        self.c_canale = QComboBox()
+        for val, etichetta in aggiornamenti.CANALI.items():
+            self.c_canale.addItem(etichetta, val)
+        self.c_canale.setCurrentIndex(max(0, self.c_canale.findData(aggiornamenti.canale_effettivo(imp, crit))))
+        if "canale_aggiornamenti" in crit:
+            self.c_canale.setEnabled(False)
+            self.c_canale.setToolTip("Impostato dall'IT con i criteri aziendali")
+        r_can.addWidget(self.c_canale)
+        r_can.addStretch(1)
+        v.addLayout(r_can)
+        n_can = QLabel("<b>Pro</b>: solo versioni rilasciate, con pacchetto verificato (impronta SHA-256 e firma) "
+                       "e librerie a versione fissa. <b>Lab</b>: ogni novità appena pubblicata, senza verifiche.")
+        n_can.setWordWrap(True)
+        n_can.setProperty("ruolo", "tenue")
+        v.addWidget(n_can)
         self.k_agg = QCheckBox("Controlla gli aggiornamenti all'avvio (legge da GitHub solo il numero di versione)")
         self.k_agg.setChecked(bool(imp["controlla_aggiornamenti"]))
         v.addWidget(self.k_agg)
         r = QHBoxLayout()
         b_ora = QPushButton("Controlla ora")
+        self.b_ora = b_ora
         b_ora.clicked.connect(lambda: self.finestra.controlla_aggiornamenti(silenzioso=False))
         b_gh = QPushButton("Apri su GitHub")
         b_gh.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(aggiornamenti.URL_GITHUB)))
@@ -105,6 +125,15 @@ class PaginaImpostazioni(Pagina):
         self.finestra.l_agg = QLabel("")
         self.finestra.l_agg.setProperty("ruolo", "tenue")
         v.addWidget(self.finestra.l_agg)
+        if crit.get("aggiornamenti_dall_app") is False:
+            for wdg in (self.k_agg, self.b_ora, self.c_canale):
+                wdg.setEnabled(False)
+            self.finestra.l_agg.setText(f"Gli aggiornamenti di {P.NOME} li distribuisce l'IT.")
+        if crit:
+            n_it = QLabel(f"🏢 Alcune impostazioni sono gestite dall'IT ({criteri.percorso()}).")
+            n_it.setWordWrap(True)
+            n_it.setProperty("ruolo", "tenue")
+            v.addWidget(n_it)
         lay.addWidget(g_agg)
 
         r = QHBoxLayout()
@@ -152,7 +181,8 @@ class PaginaImpostazioni(Pagina):
     def salva(self):
         imp = dati.carica_impostazioni()
         imp.update({"tema": self.c_tema.currentText(), "ollama_url": self.e_url.text().strip(),
-                    "modello_chat": self.c_chat.currentText(), "controlla_aggiornamenti": self.k_agg.isChecked()})
+                    "modello_chat": self.c_chat.currentText(), "controlla_aggiornamenti": self.k_agg.isChecked(),
+                    "canale_aggiornamenti": self.c_canale.currentData()})
         dati.salva_impostazioni(imp)
         self.finestra.aggiorna_badge()
         self.finestra.statusBar().showMessage("Impostazioni salvate.", 4000)
@@ -183,7 +213,8 @@ class Finestra(QMainWindow):
         self.statusBar().addPermanentWidget(self.badge)
         self.aggiorna_badge()
         self.statusBar().showMessage("Pronto. Tutto viene elaborato in locale.")
-        if dati.carica_impostazioni().get("controlla_aggiornamenti", True):
+        if (dati.carica_impostazioni().get("controlla_aggiornamenti", True)
+                and criteri.carica().get("aggiornamenti_dall_app") is not False):
             QTimer.singleShot(2500, lambda: self.controlla_aggiornamenti(silenzioso=True))
 
     # ---------------------------------------------------------------- stato "100% locale"
@@ -199,8 +230,16 @@ class Finestra(QMainWindow):
         self.nav.ricolora()
 
     # ---------------------------------------------------------------- aggiornamenti
+    def canale(self):
+        return aggiornamenti.canale_effettivo(dati.carica_impostazioni(), criteri.carica())
+
     def controlla_aggiornamenti(self, silenzioso=True):
-        lav = Lavoro(lambda _l: aggiornamenti.controlla(P.VERSIONE), self)
+        if criteri.carica().get("aggiornamenti_dall_app") is False:
+            return
+        canale = self.canale()
+        if self.l_agg:
+            self.l_agg.setText(f"Controllo su GitHub (canale {canale.capitalize()})…")
+        lav = Lavoro(lambda _l: aggiornamenti.controlla(P.VERSIONE, canale), self)
 
         def fatto(esito):
             nuova, remota, novita = esito
@@ -244,12 +283,17 @@ class Finestra(QMainWindow):
             self.installa_aggiornamento()
 
     def installa_aggiornamento(self):
+        if criteri.carica().get("aggiornamenti_dall_app") is False:
+            QMessageBox.information(self, "Aggiornamento", f"Gli aggiornamenti di {P.NOME} li distribuisce l'IT.")
+            return
         cartella = Path(__file__).resolve().parent  # la cartella app/ da cui gira il programma
-        lav = Lavoro(lambda l: aggiornamenti.installa(cartella, l.stato), self)
+        canale = self.canale()
+        lav = Lavoro(lambda l: aggiornamenti.installa(cartella, l.stato, canale), self)
         lav.sig_stato.connect(lambda t: self.statusBar().showMessage(t))
 
         def fatto(esito):
-            msg = f"Aggiornato alla versione {esito['versione']}."
+            msg = (f"Aggiornato alla versione {esito['versione']} (canale {esito['canale'].capitalize()}, "
+                   f"verifica: {esito['verifica']}).")
             if esito["librerie"] == "manca_uv":
                 msg += "\nServono librerie nuove ma uv non è stato trovato: rilancia l'installer."
             elif str(esito["librerie"]).startswith("errore"):

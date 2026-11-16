@@ -1,5 +1,7 @@
 # Manuale di Orfeo
 
+Versione del manuale: 20261116.1155
+
 ## 1. Cos'è
 
 Orfeo è l'agente editoriale di argosnewdreams.blog e fa due lavori:
@@ -39,7 +41,7 @@ Il metodo **Password applicazione** (`/wp-json`) resta disponibile per i siti Wo
 
 ### Knowledge Base
 **Controlla ora** esamina il numero di articoli indicato accanto, scegliendo prima quelli mai controllati o cambiati dall'ultimo controllo, poi i meno recenti. Gli articoli con una proposta in attesa non vengono ricontrollati finché non la applichi o la scarti. Per ogni articolo Orfeo:
-1. individua fino a 6 affermazioni che invecchiano: prezzi, licenze, nomi di prodotti e funzioni, limiti, ruoli, procedure, stato (anteprima o disponibile), date, norme;
+1. individua fino a 6 affermazioni che invecchiano: prezzi, licenze, nomi di prodotti e funzioni, limiti, ruoli, procedure, stato (anteprima o disponibile), date, norme. Salta le sezioni «Riferimenti», «Fonti», «Link interni» e la nota di trasparenza, scarta doppioni e titoli di documenti, e mette **fuori perimetro** le affermazioni su prodotti di altri fornitori o studi di mercato (le fonti ammesse non le coprono: le vedi nel registro, senza ricerche inutili). Gli **articoli lunghi** vengono divisi in parti: ogni giro ne controlla una, e la parte successiva arriva nei giri seguenti;
 2. cerca le prove su Microsoft Learn (Microsoft Learn MCP Server ufficiale) e rilegge i link dell'articolo che puntano a fonti ammesse;
 3. per ogni affermazione decide: ✅ **confermata**, ✏️ **superata**, ❔ **non verificabile**. «Superata» vale solo se la citazione indicata si ritrova parola per parola nella fonte; altrimenti diventa «non verificabile» con il motivo;
 4. per le affermazioni superate prepara la **proposta**: riscrive solo il paragrafo, titolo, voce o cella interessati e aggiunge in coda una nota «Aggiornato il… Fonti: …».
@@ -86,7 +88,7 @@ Scegli giorno e ora e premi **Salva la pianificazione**. A quell'ora Orfeo **con
 Qualsiasi altro sito viene ignorato e segnalato, sia nelle bozze sia negli articoli della Knowledge Base.
 
 ## 5. Impostazioni
-Tema (scuro, chiaro, sistema), indirizzo di Ollama e modello per i testi, download di nuovi modelli, controllo degli aggiornamenti.
+Tema (scuro, chiaro, sistema), indirizzo di Ollama e modello per i testi, download di nuovi modelli; aggiornamenti: **canale** (Lab o Pro), controllo all'avvio, *Controlla ora*, *Apri su GitHub*.
 
 ## 6. Dove stanno i dati
 | Cosa | Dove |
@@ -101,6 +103,25 @@ Tema (scuro, chiaro, sistema), indirizzo di Ollama e modello per i testi, downlo
 
 ## 7. Aggiornamenti
 All'avvio Orfeo legge da GitHub solo il numero di versione. Se ce n'è una nuova propone **Aggiorna ora**: sostituisce i file del programma (una copia resta in `app_precedente/`) e si riavvia. Dati, cartella di lavoro e pianificazione restano.
+
+In *Impostazioni → Aggiornamenti* scegli il **canale**:
+
+| Canale | Cosa ricevi | Controlli |
+| --- | --- | --- |
+| **Lab** (predefinito per Orfeo) | Ogni novità appena pubblicata | Nessuno: per chi sperimenta |
+| **Pro** | Solo versioni rilasciate | Firma Ed25519 del manifesto, impronta SHA-256 del pacchetto, librerie da `requisiti.lock` con hash |
+
+Se un pacchetto Pro non supera i controlli, non viene installato e la versione attuale resta com'è.
+
+**Per l'IT.** Un file `criteri.json` in `/Library/Application Support/Orfeo/` (Mac) o in `%ProgramData%\Orfeo\` (Windows) ha la precedenza sulle scelte dell'utente:
+
+```json
+{ "canale_aggiornamenti": "pro", "aggiornamenti_dall_app": false }
+```
+
+`canale_aggiornamenti` blocca il canale; `aggiornamenti_dall_app: false` spegne controllo e installazione dall'app (gli aggiornamenti li distribuisce l'IT).
+
+Per tornare indietro: chiudi l'app e rinomina `app_precedente` in `app`.
 
 ## 8. Disinstallazione
 1. In *Pianifica* togli la spunta e premi **Salva la pianificazione**.

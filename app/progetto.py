@@ -7,7 +7,7 @@ con `python strumenti/nuova_versione.py "titolo della novità"`, che aggiorna an
 import os
 from pathlib import Path
 
-VERSIONE = "20261115.1554"
+VERSIONE = "20261116.1155"
 
 # --- identità -------------------------------------------------------------------------------
 NOME = "Orfeo"                           # nome mostrato (finestra, menu Start, ~/Applications)
@@ -20,6 +20,10 @@ AUTORE = "Luca Borio"
 # --- GitHub (aggiornamenti dall'app) -------------------------------------------------------
 REPO = f"Argo-s-new-dreams/{SLUG}"
 RAMO = "main"
+# Canale proposto a chi installa: "lab" (segue main, ogni novità subito) oppure "pro" (solo release
+# verificate con firma e SHA-256, librerie da requisiti.lock). L'utente può cambiarlo in Impostazioni,
+# l'IT può bloccarlo con criteri.json. Orfeo è uno strumento personale per il blog: "lab".
+CANALE_PREDEFINITO = "lab"
 
 # --- dove stanno le cose sul computer dell'utente -------------------------------------------
 # <CASA>/app       -> file del programma (sostituiti dagli aggiornamenti)

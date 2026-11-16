@@ -31,7 +31,8 @@ def main():
     m = re.search(r"^## ", log, re.M)
     log = log[:m.start()] + voce + log[m.start():] if m else log.rstrip() + "\n\n" + voce
     CHANGELOG.write_text(log, encoding="utf-8")
-    print(f"Versione {vecchia} -> {nuova}. Ricorda: commit, push su GitHub e copia nella cartella SharePoint.")
+    print(f"Versione {vecchia} -> {nuova}. Ricorda: commit, push su GitHub (canale Lab) e copia nella cartella "
+          "SharePoint. Per i clienti: python strumenti/passa_a_pro.py (canale Pro).")
 
 
 if __name__ == "__main__":

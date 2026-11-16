@@ -10,6 +10,7 @@ L'app usa queste componenti, ciascuna con la propria licenza. *(Aggiorna l'elenc
 | [pypdf](https://github.com/py-pdf/pypdf) | Lettura dei PDF in arrivo | BSD 3-Clause |
 | [python-docx](https://github.com/python-openxml/python-docx) | Lettura dei .docx in arrivo | MIT |
 | [keyring](https://github.com/jaraco/keyring) | Password WordPress nel portachiavi del sistema | MIT |
+| [cryptography](https://github.com/pyca/cryptography) | Verifica della firma Ed25519 degli aggiornamenti Pro | Apache 2.0 / BSD |
 | [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) | Client del Microsoft Learn MCP Server | MIT |
 | [uv](https://github.com/astral-sh/uv) | Installazione dell'ambiente Python | MIT / Apache 2.0 |
 | [Ollama](https://ollama.com) | Server dei modelli (installato a parte) | MIT |
